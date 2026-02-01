@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,12 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
           <DialogTitle className="text-2xl font-bold">
             {t.cart.title}
           </DialogTitle>
+          <DialogDescription>
+            {isEmpty 
+              ? t.cart.emptyHint
+              : `${items.length} ${items.length === 1 ? 'item' : 'items'}`
+            }
+          </DialogDescription>
         </DialogHeader>
 
         {/* Cart content */}

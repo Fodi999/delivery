@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { DeliveryMap } from "@/components/maps/delivery-map";
 import { useApp } from "@/context/app-context";
 import { useCartStore } from "@/store/cart-store";
 import { translations } from "@/lib/translations";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Order } from "@/lib/order-types";
+import {
+  calculateDeliveryPrice,
+  formatDeliveryTime,
+  type DeliveryCalculation,
+} from "@/lib/delivery-calculator";
 
 export function CheckoutForm() {
   const { isDark, language, city } = useApp();
@@ -30,6 +36,98 @@ export function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCalculation | null>(
+    null
+  );
+  const [mapLocation, setMapLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  // Обработчик выбора локации на карте
+  const handleLocationSelect = (location: { lat: number; lng: number }) => {
+    console.log("📍 Selected location:", location);
+    setMapLocation(location);
+  };
+
+  // Обработчик расчёта расстояния
+  const handleDistanceCalculated = (distance: number, duration: number) => {
+    console.log("🧭 Distance:", distance, "km, Duration:", duration, "min");
+    // Передаём duration из Google Directions API
+    const delivery = calculateDeliveryPrice(distance, total, duration);
+    setDeliveryInfo(delivery);
+
+    if (!delivery.allowed) {
+      toast.error(delivery.reason || "Доставка невозможна");
+    } else {
+      const timeRange = formatDeliveryTime(delivery.totalTime || 0);
+      toast.success(
+        `Доставка: ${delivery.isFree ? "Бесплатно" : `${delivery.price} zł`} • ${timeRange}`
+      );
+    }
+  };
+
+  // Геокодирование адреса (текст → координаты) и установка на карте
+  const handleFindAddressOnMap = async () => {
+    if (!formData.address.trim()) {
+      toast.error(
+        language === "pl"
+          ? "Wprowadź adres"
+          : language === "ru"
+          ? "Введите адрес"
+          : language === "uk"
+          ? "Введіть адресу"
+          : "Enter address"
+      );
+      return;
+    }
+
+    setIsLoadingLocation(true);
+
+    try {
+      // Используем Google Geocoding API
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+          formData.address + ", Gdańsk, Poland"
+        )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+
+      if (data.status === "OK" && data.results[0]) {
+        const location = data.results[0].geometry.location;
+        
+        // Устанавливаем координаты на карте через callback
+        if (handleLocationSelect) {
+          handleLocationSelect({ lat: location.lat, lng: location.lng });
+        }
+
+        toast.success(
+          language === "pl"
+            ? "Adres znaleziony na mapie"
+            : language === "ru"
+            ? "Адрес найден на карте"
+            : language === "uk"
+            ? "Адресу знайдено на карті"
+            : "Address found on map"
+        );
+      } else {
+        throw new Error("Address not found");
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      toast.error(
+        language === "pl"
+          ? "Nie znaleziono adresu"
+          : language === "ru"
+          ? "Адрес не найден"
+          : language === "uk"
+          ? "Адресу не знайдено"
+          : "Address not found"
+      );
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
 
   // Геолокация и reverse geocoding
   const handleUseLocation = async () => {
@@ -321,6 +419,92 @@ export function CheckoutForm() {
           />
         </div>
 
+        {/* Google Maps с расчётом доставки */}
+        <div className="space-y-3">
+          <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
+            {language === "pl" ? "Adres dostawy" : 
+             language === "ru" ? "Адрес доставки" : 
+             language === "uk" ? "Адреса доставки" : 
+             "Delivery address"}
+          </h3>
+          <DeliveryMap
+            onLocationSelect={handleLocationSelect}
+            onDistanceCalculated={handleDistanceCalculated}
+            externalLocation={mapLocation}
+          />
+
+          {/* Информация о доставке */}
+          {deliveryInfo && (
+            <div
+              className={`p-4 rounded-lg border ${
+                deliveryInfo.allowed
+                  ? isDark
+                    ? "bg-green-950/30 border-green-800"
+                    : "bg-green-50 border-green-200"
+                  : isDark
+                  ? "bg-red-950/30 border-red-800"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              {deliveryInfo.allowed ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                      🗺 Расстояние:
+                    </span>
+                    <span className="font-semibold">{deliveryInfo.distance} км</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                      ⏱ Время доставки:
+                    </span>
+                    <span className="font-semibold">
+                      {formatDeliveryTime(deliveryInfo.totalTime || 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                      💰 Стоимость доставки:
+                    </span>
+                    <div className="text-right">
+                      {deliveryInfo.isFree ? (
+                        <div>
+                          <span className="font-semibold text-green-600 dark:text-green-400">
+                            0 zł
+                          </span>
+                          <div className="text-xs text-green-600 dark:text-green-400">
+                            (бесплатно от 100 zł)
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-semibold">{deliveryInfo.price} zł</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Детали времени */}
+                  <div className="pt-2 mt-2 border-t border-neutral-300 dark:border-neutral-700">
+                    <div className="text-xs text-neutral-500 space-y-1">
+                      <div className="flex justify-between">
+                        <span>• Приготовление:</span>
+                        <span>~20 мин</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Доставка:</span>
+                        <span>~{deliveryInfo.duration || 0} мин</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-red-600 dark:text-red-400">
+                  🚫 {deliveryInfo.reason}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div>
           <div className="relative">
             <Input
@@ -381,6 +565,45 @@ export function CheckoutForm() {
               )}
             </button>
           </div>
+          
+          {/* Кнопка "Найти на карте" */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleFindAddressOnMap}
+            disabled={isLoadingLocation || !formData.address.trim()}
+            className={`mt-2 w-full ${
+              isDark
+                ? "bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700"
+                : "bg-white border-neutral-300 text-black hover:bg-neutral-50"
+            }`}
+          >
+            {isLoadingLocation ? (
+              <>
+                <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mr-2" />
+                {language === "pl"
+                  ? "Szukam..."
+                  : language === "ru"
+                  ? "Ищу..."
+                  : language === "uk"
+                  ? "Шукаю..."
+                  : "Searching..."}
+              </>
+            ) : (
+              <>
+                🗺️{" "}
+                {language === "pl"
+                  ? "Znajdź na mapie"
+                  : language === "ru"
+                  ? "Найти на карте"
+                  : language === "uk"
+                  ? "Знайти на карті"
+                  : "Find on map"}
+              </>
+            )}
+          </Button>
+          
           <p
             className={`text-xs mt-1 ${
               isDark ? "text-neutral-500" : "text-neutral-500"
@@ -451,7 +674,13 @@ export function CheckoutForm() {
               : language === "uk"
               ? "Замовити"
               : "Order"}{" "}
-            • {total} zł
+            • {total + (deliveryInfo?.price || 0)} zł
+            {deliveryInfo && deliveryInfo.price && deliveryInfo.price > 0 && (
+              <span className="text-xs opacity-75">
+                {" "}
+                (товары: {total} zł + доставка: {deliveryInfo.price} zł)
+              </span>
+            )}
           </span>
         )}
       </Button>
