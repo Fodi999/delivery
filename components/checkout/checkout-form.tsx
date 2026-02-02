@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { DeliveryMap } from "@/components/maps/delivery-map";
+import { MapboxDeliveryMap } from "@/components/maps/mapbox-delivery-map";
 import { useApp } from "@/context/app-context";
 import { useCartStore } from "@/store/cart-store";
 import { translations } from "@/lib/translations";
@@ -85,21 +85,19 @@ export function CheckoutForm() {
     setIsLoadingLocation(true);
 
     try {
-      // Используем Google Geocoding API
+      // Используем Mapbox Geocoding API
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-          formData.address + ", Gdańsk, Poland"
-        )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          formData.address
+        )}.json?proximity=18.6466,54.3520&bbox=18.3,54.2,18.9,54.5&limit=1&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
       );
       const data = await response.json();
 
-      if (data.status === "OK" && data.results[0]) {
-        const location = data.results[0].geometry.location;
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].center;
         
         // Устанавливаем координаты на карте через callback
-        if (handleLocationSelect) {
-          handleLocationSelect({ lat: location.lat, lng: location.lng });
-        }
+        setMapLocation({ lat, lng });
 
         toast.success(
           language === "pl"
@@ -117,12 +115,12 @@ export function CheckoutForm() {
       console.error("Geocoding error:", error);
       toast.error(
         language === "pl"
-          ? "Nie znaleziono adresu"
+          ? "Nie znaleziono adresu. Spróbuj pełny adres z numerem domu."
           : language === "ru"
-          ? "Адрес не найден"
+          ? "Адрес не найден. Попробуйте полный адрес с номером дома."
           : language === "uk"
-          ? "Адресу не знайдено"
-          : "Address not found"
+          ? "Адресу не знайдено. Спробуйте повну адресу з номером будинку."
+          : "Address not found. Try full address with house number."
       );
     } finally {
       setIsLoadingLocation(false);
@@ -427,11 +425,13 @@ export function CheckoutForm() {
              language === "uk" ? "Адреса доставки" : 
              "Delivery address"}
           </h3>
-          <DeliveryMap
-            onLocationSelect={handleLocationSelect}
-            onDistanceCalculated={handleDistanceCalculated}
-            externalLocation={mapLocation}
-          />
+          <div className="h-[400px] w-full">
+            <MapboxDeliveryMap
+              onLocationSelect={handleLocationSelect}
+              onDistanceCalculated={handleDistanceCalculated}
+              externalLocation={mapLocation}
+            />
+          </div>
 
           {/* Информация о доставке */}
           {deliveryInfo && (
@@ -573,11 +573,11 @@ export function CheckoutForm() {
             size="sm"
             onClick={handleFindAddressOnMap}
             disabled={isLoadingLocation || !formData.address.trim()}
-            className={`mt-2 w-full ${
+            className={`mt-3 w-full font-medium transition-all ${
               isDark
-                ? "bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700"
-                : "bg-white border-neutral-300 text-black hover:bg-neutral-50"
-            }`}
+                ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-lg shadow-blue-500/30"
+                : "bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white border-0 shadow-lg shadow-blue-500/20"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isLoadingLocation ? (
               <>
@@ -592,7 +592,25 @@ export function CheckoutForm() {
               </>
             ) : (
               <>
-                🗺️{" "}
+                <svg 
+                  className="w-4 h-4 mr-2" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
+                  />
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+                  />
+                </svg>
                 {language === "pl"
                   ? "Znajdź na mapie"
                   : language === "ru"

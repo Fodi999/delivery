@@ -4,6 +4,8 @@ export const translations = {
   pl: {
     headline: "Sushi • Wok • Ramen",
     subheadline: "Szybka dostawa w Gdańsku",
+    openUntil: "Otwarte do 22:00",
+    deliveryTime: "30–45 min",
     orderNow: "Zamów teraz",
     viewMenu: "Zobacz menu",
     openCategory: "Otwórz",
@@ -43,6 +45,8 @@ export const translations = {
   en: {
     headline: "Sushi • Wok • Ramen",
     subheadline: "Fast delivery in Gdańsk",
+    openUntil: "Open until 22:00",
+    deliveryTime: "30–45 min",
     orderNow: "Order now",
     viewMenu: "View menu",
     openCategory: "Open",
@@ -82,6 +86,8 @@ export const translations = {
   uk: {
     headline: "Суші • Вок • Рамен",
     subheadline: "Швидка доставка в Гданську",
+    openUntil: "Відкрито до 22:00",
+    deliveryTime: "30–45 хв",
     orderNow: "Замовити зараз",
     viewMenu: "Переглянути меню",
     openCategory: "Відкрити",
@@ -121,6 +127,8 @@ export const translations = {
   ru: {
     headline: "Суши • Вок • Рамен",
     subheadline: "Быстрая доставка в Гданьске",
+    openUntil: "Открыто до 22:00",
+    deliveryTime: "30–45 мин",
     orderNow: "Заказать сейчас",
     viewMenu: "Посмотреть меню",
     openCategory: "Открыть",

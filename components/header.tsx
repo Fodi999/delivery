@@ -121,15 +121,11 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
                 <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm mt-0.5">
                   <span className={`flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    {language === 'pl' ? 'Otwarte do 22:00' : 
-                     language === 'en' ? 'Open until 22:00' :
-                     language === 'uk' ? 'Відкрито до 22:00' :
-                     'Открыто до 22:00'}
+                    {t.openUntil}
                   </span>
                   <span className={isDark ? 'text-neutral-600' : 'text-neutral-400'}>•</span>
                   <span className={`flex items-center gap-1 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>30–45 min</span>
+                    {t.deliveryTime}
                   </span>
                 </div>
               </button>

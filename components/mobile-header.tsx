@@ -86,10 +86,23 @@ export function MobileHeader({ showBackButton = false, title }: MobileHeaderProp
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="text-lg font-bold truncate px-2 hover:opacity-70 transition-opacity"
+              className="hover:opacity-70 transition-opacity"
               aria-label="Go to homepage"
             >
-              {t.headline}
+              <div className="text-lg font-bold truncate px-2">
+                {t.headline}
+              </div>
+              {/* Status info under title */}
+              <div className="flex items-center justify-center gap-2 text-xs mt-0.5 px-2">
+                <span className={`flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                  {t.openUntil}
+                </span>
+                <span className={isDark ? 'text-neutral-600' : 'text-neutral-400'}>•</span>
+                <span className={isDark ? 'text-neutral-400' : 'text-neutral-600'}>
+                  {t.deliveryTime}
+                </span>
+              </div>
             </button>
           )}
         </div>
