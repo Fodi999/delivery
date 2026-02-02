@@ -23,6 +23,9 @@ export const translations = {
       total: "Suma",
       clear: "Wyczyść",
       checkout: "Zamów",
+      item: "pozycja",
+      items: "pozycje",
+      itemsMany: "pozycji",
     },
     checkout: {
       title: "Oformienie zamówienia",
@@ -59,6 +62,9 @@ export const translations = {
       total: "Total",
       clear: "Clear",
       checkout: "Checkout",
+      item: "item",
+      items: "items",
+      itemsMany: "items",
     },
     checkout: {
       title: "Checkout",
@@ -95,6 +101,9 @@ export const translations = {
       total: "Разом",
       clear: "Очистити",
       checkout: "Оформити",
+      item: "товар",
+      items: "товари",
+      itemsMany: "товарів",
     },
     checkout: {
       title: "Оформлення замовлення",
@@ -131,6 +140,9 @@ export const translations = {
       total: "Итого",
       clear: "Очистить",
       checkout: "Оформить",
+      item: "товар",
+      items: "товара",
+      itemsMany: "товаров",
     },
     checkout: {
       title: "Оформление заказа",
@@ -146,3 +158,33 @@ export const translations = {
     },
   },
 } as const;
+
+// Функция для правильного склонения слова "товар"
+export function getItemsWord(count: number, language: Language): string {
+  const t = translations[language].cart;
+  
+  if (language === "en") {
+    return count === 1 ? t.item : t.items;
+  }
+  
+  if (language === "pl") {
+    if (count === 1) return t.item;
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+      return t.items;
+    }
+    return t.itemsMany;
+  }
+  
+  if (language === "uk" || language === "ru") {
+    const lastDigit = count % 10;
+    const lastTwoDigits = count % 100;
+    
+    if (lastDigit === 1 && lastTwoDigits !== 11) return t.item;
+    if (lastDigit >= 2 && lastDigit <= 4 && (lastTwoDigits < 10 || lastTwoDigits >= 20)) {
+      return t.items;
+    }
+    return t.itemsMany;
+  }
+  
+  return t.items;
+}

@@ -44,15 +44,15 @@ export function CartItemComponent({ item }: CartItemProps) {
 
         {/* Controls row */}
         <div className="flex items-center justify-between">
-          {/* ✅ Perfect circular buttons - iOS Safari proof */}
+          {/* ✅ Perfect circular buttons with visible borders */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => decrease(item.id)}
-              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-colors ${
+              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-all border ${
                 isDark 
-                  ? "bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600" 
-                  : "bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300"
+                  ? "border-neutral-600 hover:bg-neutral-800 active:bg-neutral-700" 
+                  : "border-neutral-300 hover:bg-neutral-100 active:bg-neutral-200"
               }`}
               aria-label="Decrease quantity"
             >
@@ -66,10 +66,10 @@ export function CartItemComponent({ item }: CartItemProps) {
             <button
               type="button"
               onClick={() => increase(item.id)}
-              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-colors ${
+              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-all border ${
                 isDark 
-                  ? "bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600" 
-                  : "bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300"
+                  ? "border-neutral-600 hover:bg-neutral-800 active:bg-neutral-700" 
+                  : "border-neutral-300 hover:bg-neutral-100 active:bg-neutral-200"
               }`}
               aria-label="Increase quantity"
             >
@@ -77,15 +77,19 @@ export function CartItemComponent({ item }: CartItemProps) {
             </button>
           </div>
 
-          {/* Remove button */}
-          <Button
-            variant="ghost"
-            size="icon"
+          {/* Remove button - circular with border */}
+          <button
+            type="button"
             onClick={() => removeItem(item.id)}
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-all border ${
+              isDark
+                ? "border-neutral-600 text-muted-foreground hover:bg-red-950 hover:border-red-800 hover:text-red-400 active:bg-red-900"
+                : "border-neutral-300 text-muted-foreground hover:bg-red-50 hover:border-red-300 hover:text-red-600 active:bg-red-100"
+            }`}
+            aria-label="Remove item"
           >
-            <X className="w-4 h-4" />
-          </Button>
+            <X className="h-4 w-4 pointer-events-none" />
+          </button>
         </div>
       </div>
     </div>

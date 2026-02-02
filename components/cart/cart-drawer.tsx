@@ -2,7 +2,7 @@
 
 import { useCartStore } from "@/store/cart-store";
 import { useApp } from "@/context/app-context";
-import { translations } from "@/lib/translations";
+import { translations, getItemsWord } from "@/lib/translations";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CartItemComponent } from "./cart-item";
@@ -54,7 +54,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
               {t.cart.title}
             </SheetTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {isEmpty ? t.cart.emptyHint : `${items.length} ${items.length === 1 ? "item" : "items"}`}
+              {isEmpty ? t.cart.emptyHint : `${items.length} ${getItemsWord(items.length, language)}`}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="h-10 w-10 rounded-full">
