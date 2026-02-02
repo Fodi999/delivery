@@ -48,7 +48,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (savedTheme === "light") {
       setIsDark(false);
+      document.documentElement.classList.remove("dark");
+    } else {
+      // Default is dark or savedTheme === "dark"
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
     }
+    
     if (savedLanguage && ["pl", "en", "uk", "ru"].includes(savedLanguage)) {
       setLanguage(savedLanguage as Language);
     }
@@ -59,10 +65,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
 
-  // Save theme to localStorage
+  // Save theme to localStorage and apply to DOM
   useEffect(() => {
     if (mounted) {
       localStorage.setItem("theme", isDark ? "dark" : "light");
+      
+      // ✅ Apply dark class to html element for theme support
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
   }, [isDark, mounted]);
 

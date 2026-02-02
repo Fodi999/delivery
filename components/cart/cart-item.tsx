@@ -2,9 +2,9 @@
 
 import { useCartStore, type CartItem } from "@/store/cart-store";
 import { useApp } from "@/context/app-context";
-import { Button } from "@/components/ui/button";
 import { Plus, Minus, X } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface CartItemProps {
   item: CartItem;
@@ -17,75 +17,76 @@ export function CartItemComponent({ item }: CartItemProps) {
   const removeItem = useCartStore((s) => s.removeItem);
 
   return (
-    <div
-      className={`flex gap-4 p-4 rounded-lg transition-colors ${
-        isDark ? "bg-neutral-900" : "bg-neutral-50"
-      }`}
-    >
-      {/* Image */}
-      <Image
-        src={item.image}
-        alt={item.name[language]}
-        width={80}
-        height={80}
-        className="rounded-lg object-cover flex-shrink-0"
-      />
+    // ✅ STEP 4: Compact receipt-style layout
+    <div className="flex gap-3 py-2">
+      {/* Small image */}
+      <div className="relative w-14 h-14 flex-shrink-0">
+        <Image
+          src={item.image}
+          alt={item.name[language]}
+          fill
+          sizes="56px"
+          className="rounded-lg object-cover"
+        />
+      </div>
 
-      {/* Info */}
+      {/* Info - takes full width */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm line-clamp-2">
+        {/* Name and price on same line */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="font-medium text-sm line-clamp-1 flex-1">
             {item.name[language]}
           </h4>
+          <span className="font-bold text-sm whitespace-nowrap">
+            {item.price} zł
+          </span>
+        </div>
+
+        {/* Controls row */}
+        <div className="flex items-center justify-between">
+          {/* ✅ Perfect circular buttons - iOS Safari proof */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => decrease(item.id)}
+              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-colors ${
+                isDark 
+                  ? "bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600" 
+                  : "bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300"
+              }`}
+              aria-label="Decrease quantity"
+            >
+              <Minus className="h-4 w-4 pointer-events-none" />
+            </button>
+
+            <span className="font-medium text-sm min-w-[24px] text-center">
+              {item.quantity}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => increase(item.id)}
+              className={`h-8 w-8 aspect-square rounded-full flex items-center justify-center leading-none touch-manipulation transition-colors ${
+                isDark 
+                  ? "bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600" 
+                  : "bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300"
+              }`}
+              aria-label="Increase quantity"
+            >
+              <Plus className="h-4 w-4 pointer-events-none" />
+            </button>
+          </div>
+
+          {/* Remove button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => removeItem(item.id)}
-            className="h-6 w-6 flex-shrink-0 -mt-1 -mr-2"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
-
-        <div className="flex items-center justify-between mt-2">
-          <div className="font-bold text-lg">{item.price} zł</div>
-
-          {/* Quantity controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => decrease(item.id)}
-              className="h-8 w-8 rounded-full"
-            >
-              <Minus className="w-4 h-4" />
-            </Button>
-
-            <span className="font-semibold min-w-[24px] text-center">
-              {item.quantity}
-            </span>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => increase(item.id)}
-              className="h-8 w-8 rounded-full"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Subtotal */}
-        {item.quantity > 1 && (
-          <div
-            className={`text-xs mt-1 ${
-              isDark ? "text-neutral-400" : "text-neutral-600"
-            }`}
-          >
-            {item.quantity} × {item.price} zł
-          </div>
-        )}
       </div>
     </div>
   );

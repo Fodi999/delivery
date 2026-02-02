@@ -53,12 +53,21 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
   const count = useCartStore((s) => s.count());
   const [cartOpen, setCartOpen] = useState(false);
 
+  // ✅ Best practice: proper back navigation with fallback
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
+
   if (!mounted) {
     return (
-      <header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${
+      <header className={`hidden md:block sticky top-0 z-50 backdrop-blur-xl border-b ${
         isDark ? 'bg-black/70 border-neutral-800' : 'bg-white/70 border-neutral-200'
       }`}>
-        <div className="max-w-7xl mx-auto px-6 md:px-12 py-4 h-[72px]" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 py-3 sm:py-4 h-[60px] sm:h-[64px]" />
       </header>
     );
   }
@@ -67,48 +76,49 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
   const isLandingPage = pathname === "/";
 
   return (
-    <header className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-colors ${
+    <header className={`hidden md:block sticky top-0 z-50 backdrop-blur-xl border-b transition-colors ${
       isDark 
         ? 'bg-black/70 border-neutral-800' 
         : 'bg-white/70 border-neutral-200'
     }`}>
-      <div className="max-w-7xl mx-auto px-6 md:px-12 py-4">
-        <div className="flex items-center justify-between gap-4">
-          {/* Left section */}
-          <div className="flex items-center gap-4 flex-1">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">{/* Left section */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             {showBackButton && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => router.push("/")}
-                className={`rounded-full ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
-                aria-label="Back to home"
+                onClick={handleBack}
+                className={`rounded-full shrink-0 ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
+                aria-label="Go back"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             )}
 
             {title ? (
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold capitalize">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold capitalize truncate">
                   {title}
                 </h1>
                 {subtitle && (
-                  <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  <p className={`text-xs sm:text-sm truncate ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                     {subtitle}
                   </p>
                 )}
               </div>
             ) : (
-              <div 
-                className="flex flex-col cursor-pointer hover:opacity-80 transition-opacity"
+              <button
+                type="button"
+                className="flex flex-col text-left hover:opacity-80 transition-opacity min-w-0"
                 onClick={() => router.push("/")}
+                aria-label="Go to homepage"
               >
-                <h1 className="text-2xl md:text-3xl font-bold">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">
                   {t.headline}
                 </h1>
-                {/* Status Badge - только на главной */}
-                <div className="flex items-center gap-2 text-xs md:text-sm mt-0.5">
+                {/* Status Badge - только на главной, скрыт на маленьких экранах */}
+                <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm mt-0.5">
                   <span className={`flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                     {language === 'pl' ? 'Otwarte do 22:00' : 
@@ -122,36 +132,38 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
                     <span>30–45 min</span>
                   </span>
                 </div>
-              </div>
+              </button>
             )}
           </div>
 
           {/* Right section - controls */}
-          <div className="flex items-center gap-2">
-            {/* City selector - only on landing page */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* City selector - only on landing page, hidden on small screens */}
             {isLandingPage && (
-              <Select value={city} onValueChange={(value) => setCity(value as any)}>
-                <SelectTrigger 
-                  className={`w-[130px] ${
-                    isDark 
-                      ? 'bg-neutral-900 border-neutral-800' 
-                      : 'bg-white border-neutral-200'
-                  }`}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gdansk">Gdańsk</SelectItem>
-                  <SelectItem value="sopot">Sopot</SelectItem>
-                  <SelectItem value="gdynia">Gdynia</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="hidden sm:block">
+                <Select value={city} onValueChange={(value) => setCity(value as any)}>
+                  <SelectTrigger 
+                    className={`w-[90px] sm:w-[130px] text-xs sm:text-sm ${
+                      isDark 
+                        ? 'bg-neutral-900 border-neutral-800' 
+                        : 'bg-white border-neutral-200'
+                    }`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gdansk">Gdańsk</SelectItem>
+                    <SelectItem value="sopot">Sopot</SelectItem>
+                    <SelectItem value="gdynia">Gdynia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {/* Language selector */}
             <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
               <SelectTrigger 
-                className={`w-[100px] ${
+                className={`w-[70px] sm:w-[100px] text-xs sm:text-sm ${
                   isDark 
                     ? 'bg-neutral-900 border-neutral-800' 
                     : 'bg-white border-neutral-200'
@@ -173,10 +185,10 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
               variant="ghost"
               size="icon"
               onClick={() => setIsDark(!isDark)}
-              className={`rounded-full ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
+              className={`rounded-full h-9 w-9 sm:h-10 sm:w-10 ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </Button>
 
             {/* Cart button - only on menu pages */}
@@ -185,11 +197,11 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
                 variant="ghost"
                 size="icon"
                 onClick={() => setCartOpen(true)}
-                className={`rounded-full relative ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
+                className={`rounded-full relative h-9 w-9 sm:h-10 sm:w-10 ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                 {count > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold">
+                  <span className="absolute -top-0.5 sm:-top-1 -right-0.5 sm:-right-1 h-4 sm:h-5 min-w-[16px] sm:min-w-[20px] px-0.5 sm:px-1 rounded-full bg-red-500 text-white text-[10px] sm:text-xs flex items-center justify-center font-semibold">
                     {count}
                   </span>
                 )}
@@ -199,7 +211,7 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
         </div>
       </div>
 
-      {/* Cart Drawer */}
+      {/* Unified Cart Drawer */}
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
     </header>
   );

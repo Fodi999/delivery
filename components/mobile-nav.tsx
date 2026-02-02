@@ -1,17 +1,78 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, UtensilsCrossed, ShoppingCart, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, UtensilsCrossed, ShoppingCart, Settings2 } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef } from "react";
 
-export function MobileNav() {
+type NavItem = {
+  href?: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+  badge?: number;
+  onClick?: () => void;
+};
+
+interface MobileNavProps {
+  cartOpen: boolean;
+  onCartOpenChange: (open: boolean) => void;
+}
+
+export function MobileNav({ cartOpen, onCartOpenChange }: MobileNavProps) {
   const pathname = usePathname();
-  const items = useCartStore((state) => state.items);
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const router = useRouter();
+  const itemCount = useCartStore((s) => s.count());
+  const [isVisible, setIsVisible] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
 
-  const navItems = [
+  // ✅ Fix hydration: wait for client-side mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // ✅ Hide nav when cart is open
+  useEffect(() => {
+    if (cartOpen) {
+      setIsVisible(false);
+    }
+  }, [cartOpen]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          // Show nav when scrolling up or at top
+          if (currentScrollY < lastScrollY.current || currentScrollY < 50) {
+            setIsVisible(true);
+          } 
+          // Hide nav when scrolling down (after 50px)
+          else if (currentScrollY > 50 && currentScrollY > lastScrollY.current) {
+            setIsVisible(false);
+          }
+          
+          lastScrollY.current = currentScrollY;
+          ticking.current = false;
+        });
+        
+        ticking.current = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const navItems: NavItem[] = [
     {
       href: "/",
       label: "Home",
@@ -25,64 +86,158 @@ export function MobileNav() {
       active: pathname.startsWith("/menu"),
     },
     {
-      href: "/checkout",
+      // ✅ Cart opens drawer, not navigation
       label: "Cart",
       icon: ShoppingCart,
-      active: pathname === "/checkout",
+      active: cartOpen,
       badge: itemCount > 0 ? itemCount : undefined,
+      onClick: () => {
+        onCartOpenChange(true);
+      },
     },
     {
       href: "/profile",
-      label: "Profile",
-      icon: User,
+      label: "Settings",
+      icon: Settings2,
       active: pathname === "/profile",
     },
   ];
 
-  // Don't show on success page
-  if (pathname === "/order/success") {
+  // ✅ Hide nav on specific routes
+  const hiddenRoutes = ["/order/success", "/login", "/onboarding", "/cart", "/checkout"];
+  if (hiddenRoutes.some((route) => pathname.startsWith(route))) {
     return null;
   }
 
   return (
     <>
-      {/* Spacer to prevent content from being hidden behind nav */}
-      <div className="h-16 md:hidden" />
-      
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-around h-16 px-2">
+      {/* Mobile Bottom Navigation - iPhone Safari Style */}
+      <nav 
+        className={cn(
+          "fixed left-0 right-0 z-50 md:hidden border-t bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/95 transition-all duration-300 ease-in-out",
+          isVisible ? "bottom-0" : "-bottom-24"
+        )}
+      >
+        <div className="flex items-center justify-around h-16 px-2 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[64px]",
-                  item.active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="relative">
-                  <Icon className="h-5 w-5" />
-                  {item.badge && (
-                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                      {item.badge > 9 ? "9+" : item.badge}
-                    </span>
+            
+            if (item.href) {
+              // Render as Link
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={item.onClick}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[64px] active:scale-95",
+                    item.active
+                      ? "text-primary scale-105"
+                      : "text-muted-foreground hover:text-foreground hover:scale-105"
                   )}
-                </div>
-                <span className="text-[11px] font-medium">{item.label}</span>
-                {item.active && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                )}
-              </Link>
-            );
+                  aria-label={item.label}
+                  aria-current={item.active ? "page" : undefined}
+                >
+                  {/* Icon Container with Badge */}
+                  <div className="relative">
+                    <div className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-200",
+                      item.active 
+                        ? "bg-primary/10" 
+                        : "bg-transparent"
+                    )}>
+                      <Icon className={cn(
+                        "transition-all duration-200",
+                        item.active ? "h-6 w-6" : "h-5 w-5"
+                      )} />
+                    </div>
+                    
+                    {/* Badge - only after hydration */}
+                    {isMounted && item.badge && (
+                      <span 
+                        className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 shadow-lg animate-in zoom-in-50 duration-200"
+                        aria-label={`${item.badge} items in cart`}
+                      >
+                        {item.badge > 9 ? "9+" : item.badge}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Label */}
+                  <span className={cn(
+                    "text-[10px] font-medium transition-all duration-200",
+                    item.active ? "opacity-100 font-semibold" : "opacity-70"
+                  )}>
+                    {item.label}
+                  </span>
+                  
+                  {/* Active Indicator */}
+                  {item.active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-in fade-in zoom-in-50 duration-200" />
+                  )}
+                </Link>
+              );
+            } else {
+              // Render as button
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[64px] active:scale-95",
+                    item.active
+                      ? "text-primary scale-105"
+                      : "text-muted-foreground hover:text-foreground hover:scale-105"
+                  )}
+                  aria-label={item.label}
+                  aria-current={item.active ? "page" : undefined}
+                >
+                  {/* Icon Container with Badge */}
+                  <div className="relative">
+                    <div className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-200",
+                      item.active 
+                        ? "bg-primary/10" 
+                        : "bg-transparent"
+                    )}>
+                      <Icon className={cn(
+                        "transition-all duration-200",
+                        item.active ? "h-6 w-6" : "h-5 w-5"
+                      )} />
+                    </div>
+                    
+                    {/* Badge - only after hydration */}
+                    {isMounted && item.badge && (
+                      <span 
+                        className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 shadow-lg animate-in zoom-in-50 duration-200"
+                        aria-label={`${item.badge} items in cart`}
+                      >
+                        {item.badge > 9 ? "9+" : item.badge}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Label */}
+                  <span className={cn(
+                    "text-[10px] font-medium transition-all duration-200",
+                    item.active ? "opacity-100 font-semibold" : "opacity-70"
+                  )}>
+                    {item.label}
+                  </span>
+                  
+                  {/* Active Indicator */}
+                  {item.active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-in fade-in zoom-in-50 duration-200" />
+                  )}
+                </button>
+              );
+            }
           })}
         </div>
+        
         {/* Safe area padding for devices with notch */}
-        <div className="h-[env(safe-area-inset-bottom)]" />
+        <div className="h-[env(safe-area-inset-bottom)] bg-background" />
       </nav>
     </>
   );
