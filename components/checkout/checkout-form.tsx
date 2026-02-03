@@ -20,6 +20,9 @@ import {
 import { useCustomerLookup } from "@/lib/hooks/use-customer-lookup";
 import { formatPrice } from "@/lib/price";
 import { menuItems } from "@/lib/menu-data";
+import { PersonSelector } from "./PersonSelector";
+import { AIRecommendationCard, AISuggestions } from "./AIRecommendations";
+import { DeliveryMapSection } from "./DeliveryMapSection";
 
 export function CheckoutForm() {
   const { isDark, language, city } = useApp();
@@ -848,468 +851,189 @@ export function CheckoutForm() {
         </div>
 
         {/* 🍱 Количество персон с AI рекомендацией */}
+        <PersonSelector
+          numberOfPeople={formData.numberOfPeople}
+          onChange={(value) => setFormData({ ...formData, numberOfPeople: value })}
+          language={language}
+          isDark={isDark}
+        />
+          
+        {/* 🤖 AI рекомендация */}
+        {aiRecommendation && (
+          <AIRecommendationCard
+            recommendation={aiRecommendation}
+            isDark={isDark}
+            language={language}
+          />
+        )}
+
+        {/* AI предложения блюд */}
+        {aiSuggestions.length > 0 && (
+          <AISuggestions
+            suggestions={aiSuggestions}
+            onAddToCart={handleSuggestionClick}
+            isLoading={isLoadingSuggestions}
+            isDark={isDark}
+          />
+        )}
+
+        {/* Адрес доставки */}
         <div className="space-y-2">
           <label className={`text-sm font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
-            {language === "pl" 
-              ? "Liczba osób" 
-              : language === "ru" 
-              ? "Количество персон" 
-              : language === "uk" 
-              ? "Кількість персон" 
-              : "Number of people"}
-          </label>
-          
-          <div className="flex gap-3">
-            {/* Счетчик персон */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ 
-                  ...formData, 
-                  numberOfPeople: Math.max(1, formData.numberOfPeople - 1) 
-                })}
-                className={`w-10 h-10 rounded-lg border flex items-center justify-center font-bold text-lg transition-colors ${
-                  isDark 
-                    ? "bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-white"
-                    : "bg-white border-neutral-300 hover:bg-neutral-50 text-black"
-                }`}
-              >
-                −
-              </button>
-              
-              <div className={`w-16 h-10 rounded-lg border flex items-center justify-center font-bold text-lg ${
-                isDark 
-                  ? "bg-neutral-800 border-neutral-700 text-white"
-                  : "bg-neutral-50 border-neutral-300 text-black"
-              }`}>
-                {formData.numberOfPeople}
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => setFormData({ 
-                  ...formData, 
-                  numberOfPeople: Math.min(20, formData.numberOfPeople + 1) 
-                })}
-                className={`w-10 h-10 rounded-lg border flex items-center justify-center font-bold text-lg transition-colors ${
-                  isDark 
-                    ? "bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-white"
-                    : "bg-white border-neutral-300 hover:bg-neutral-50 text-black"
-                }`}
-              >
-                +
-              </button>
-            </div>
-            
-            {/* Иконка человечков */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(formData.numberOfPeople, 5) }).map((_, i) => (
-                <span key={i} className="text-2xl">👤</span>
-              ))}
-              {formData.numberOfPeople > 5 && (
-                <span className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                  +{formData.numberOfPeople - 5}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          {/* 🤖 AI рекомендация */}
-          {aiRecommendation && (
-            <div className={`p-4 rounded-xl border ${
-              isDark 
-                ? "bg-gradient-to-br from-purple-950/40 to-pink-950/40 border-purple-700/50" 
-                : "bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200"
-            }`}>
-              <div className="flex items-start gap-3">
-                <svg className="w-6 h-6 flex-shrink-0 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                <div className="flex-1 space-y-3">
-                  <p className={`text-sm font-medium ${isDark ? 'text-purple-200' : 'text-purple-900'}`}>
-                    {aiRecommendation}
-                  </p>
-                  
-                  {/* 🎯 Интерактивные кнопки-предложения */}
-                  {aiSuggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {isLoadingSuggestions ? (
-                        <div className="flex gap-2">
-                          {[1, 2, 3].map((i) => (
-                            <div
-                              key={i}
-                              className={`h-9 w-24 rounded-full animate-pulse ${
-                                isDark ? 'bg-purple-800/50' : 'bg-purple-200'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        aiSuggestions.map((suggestion, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 ${
-                              isDark
-                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/30'
-                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-md'
-                            }`}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            {suggestion}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Google Maps с расчётом доставки */}
-        <div className="space-y-3">
-          <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
             {language === "pl" ? "Adres dostawy" : 
              language === "ru" ? "Адрес доставки" : 
              language === "uk" ? "Адреса доставки" : 
              "Delivery address"}
-          </h3>
-          <div className="h-[400px] w-full">
-            <MapboxDeliveryMap
-              onLocationSelect={handleLocationSelect}
-              onDistanceCalculated={handleDistanceCalculated}
-              externalLocation={mapLocation}
-            />
-          </div>
-
-          {/* Информация о доставке */}
-          {deliveryInfo && (
-            <div
-              className={`p-4 rounded-lg border ${
-                deliveryInfo.allowed
-                  ? isDark
-                    ? "bg-green-950/30 border-green-800"
-                    : "bg-green-50 border-green-200"
-                  : isDark
-                  ? "bg-red-950/30 border-red-800"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              {deliveryInfo.allowed ? (
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className={`flex items-center gap-2 ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Расстояние:
-                    </span>
-                    <span className="font-semibold">{deliveryInfo.distance} км</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`flex items-center gap-2 ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Время доставки:
-                    </span>
-                    <span className="font-semibold">
-                      {formatDeliveryTime(deliveryInfo.totalTime || 0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`flex items-center gap-2 ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Стоимость доставки:
-                    </span>
-                    <div className="text-right">
-                      {deliveryInfo.isFree ? (
-                        <div>
-                          <span className="font-semibold text-green-600 dark:text-green-400">
-                            0 zł
-                          </span>
-                          <div className="text-xs text-green-600 dark:text-green-400">
-                            (бесплатно от 100 zł)
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="font-semibold">{deliveryInfo.price} zł</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Детали времени */}
-                  <div className="pt-2 mt-2 border-t border-neutral-300 dark:border-neutral-700">
-                    <div className="text-xs text-neutral-500 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Приготовление:
-                        </span>
-                        <span>~20 мин</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Доставка:
-                        </span>
-                        <span>~{deliveryInfo.duration || 0} мин</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* 🚚 AI-помощник доставки */}
-                  {aiDeliveryMessage && (
-                    <div className="pt-3 mt-3 border-t border-neutral-300 dark:border-neutral-700">
-                      <div className="flex items-start gap-2 mb-3">
-                        <svg className="w-5 h-5 flex-shrink-0 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400 flex-1">
-                          {aiDeliveryMessage}
-                        </p>
-                      </div>
-                      
-                      {/* Интерактивные кнопки доставки */}
-                      {aiDeliverySuggestions.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {aiDeliverySuggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => handleDeliverySuggestionClick(suggestion)}
-                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 ${
-                                isDark
-                                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-lg shadow-green-500/20'
-                                  : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-sm'
-                              }`}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-red-600 dark:text-red-400">
-                  🚫 {deliveryInfo.reason}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="relative">
+          </label>
+          
+          <div className="flex gap-2">
             <Input
-              placeholder={t.checkout.address}
+              placeholder={language === "pl" ? "ul. Długa 1/2" : 
+                         language === "ru" ? "ул. Длинная 1/2" :
+                         language === "uk" ? "вул. Довга 1/2" :
+                         "Street and number"}
               value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               required
-              className={`pr-12 ${
-                isDark ? "bg-neutral-800 border-neutral-700" : ""
-              }`}
+              className={isDark ? "bg-neutral-800 border-neutral-700" : ""}
             />
-            <button
+            
+            <Button
               type="button"
-              onClick={handleUseLocation}
-              disabled={isLoadingLocation}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md transition-colors ${
-                isLoadingLocation
-                  ? "opacity-50 cursor-not-allowed"
-                  : isDark
-                  ? "hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200"
-                  : "hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800"
-              }`}
-              title={
-                language === "pl"
-                  ? "Użyj mojej lokalizacji"
-                  : language === "ru"
-                  ? "Использовать мое местоположение"
-                  : language === "uk"
-                  ? "Використати моє місцезнаходження"
-                  : "Use my location"
-              }
+              onClick={handleFindAddressOnMap}
+              disabled={isLoadingLocation || !formData.address.trim()}
+              variant="outline"
+              className="whitespace-nowrap"
             >
               {isLoadingLocation ? (
-                <span className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" />
+                <span className="animate-spin">⏳</span>
               ) : (
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              )}
-            </button>
+                "🗺️"
+              )}{" "}
+              {language === "pl" ? "Znajdź" : 
+               language === "ru" ? "Найти" :
+               language === "uk" ? "Знайти" :
+               "Find"}
+            </Button>
           </div>
-          
-          {/* Кнопка "Найти на карте" */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleFindAddressOnMap}
-            disabled={isLoadingLocation || !formData.address.trim()}
-            className={`mt-3 w-full font-medium transition-all ${
-              isDark
-                ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-lg shadow-blue-500/30"
-                : "bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white border-0 shadow-lg shadow-blue-500/20"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {isLoadingLocation ? (
-              <>
-                <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mr-2" />
-                {language === "pl"
-                  ? "Szukam..."
-                  : language === "ru"
-                  ? "Ищу..."
-                  : language === "uk"
-                  ? "Шукаю..."
-                  : "Searching..."}
-              </>
-            ) : (
-              <>
-                <svg 
-                  className="w-4 h-4 mr-2" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
-                  />
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
-                  />
-                </svg>
-                {language === "pl"
-                  ? "Znajdź na mapie"
-                  : language === "ru"
-                  ? "Найти на карте"
-                  : language === "uk"
-                  ? "Знайти на карті"
-                  : "Find on map"}
-              </>
-            )}
-          </Button>
-          
-          <p
-            className={`text-xs mt-1 ${
-              isDark ? "text-neutral-500" : "text-neutral-500"
-            }`}
-          >
-            {language === "pl"
-              ? "Ulica, numer domu, mieszkanie"
-              : language === "ru"
-              ? "Улица, дом, квартира"
-              : language === "uk"
-              ? "Вулиця, будинок, квартира"
-              : "Street, house number, apartment"}
-          </p>
         </div>
 
+        {/* Карта доставки */}
+        <DeliveryMapSection
+          mapLocation={mapLocation}
+          onLocationSelect={handleLocationSelect}
+          onDistanceCalculated={handleDistanceCalculated}
+          deliveryInfo={deliveryInfo}
+          isDark={isDark}
+          language={language}
+        />
+
+        {/* AI помощник доставки */}
+        {aiDeliveryMessage && (
+          <div className={`p-4 rounded-xl border ${
+            isDark 
+              ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-700/30' 
+              : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200'
+          }`}>
+            <div className="flex gap-3 mb-3">
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                isDark ? 'bg-blue-500/20' : 'bg-blue-100'
+              }`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#3b82f6" : "#2563eb"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+              </div>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                {aiDeliveryMessage}
+              </p>
+            </div>
+            
+            {aiDeliverySuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {aiDeliverySuggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleDeliverySuggestionClick(suggestion)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 ${
+                      isDark
+                        ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
+                        : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-200'
+                    }`}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Комментарий */}
         <div>
           <Textarea
-            placeholder={t.checkout.comment}
+            placeholder={language === "pl" ? "Komentarz do zamówienia (opcjonalnie)" :
+                       language === "ru" ? "Комментарий к заказу (необязательно)" :
+                       language === "uk" ? "Коментар до замовлення (необов'язково)" :
+                       "Order comment (optional)"}
             value={formData.comment}
-            onChange={(e) =>
-              setFormData({ ...formData, comment: e.target.value })
-            }
-            rows={2}
+            onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
             className={isDark ? "bg-neutral-800 border-neutral-700" : ""}
+            rows={3}
           />
-          <p
-            className={`text-xs mt-1 ${
-              isDark ? "text-neutral-500" : "text-neutral-500"
-            }`}
-          >
-            {language === "pl"
-              ? "Np: nie dzwonić, zostawić przy drzwiach"
-              : language === "ru"
-              ? "Например: не звонить, оставить у двери"
-              : language === "uk"
-              ? "Наприклад: не дзвонити, залишити біля дверей"
-              : "E.g: don't call, leave at door"}
-          </p>
         </div>
-      </div>
 
-      <Button
-        type="submit"
-        disabled={!isFormValid || isSubmitting}
-        className={`w-full mt-6 text-base font-semibold ${
-          isDark
-            ? "bg-white text-black hover:bg-neutral-200 disabled:bg-neutral-700 disabled:text-neutral-500"
-            : "bg-black text-white hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500"
-        }`}
-      >
-        {isSubmitting ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" />
-            {language === "pl"
-              ? "Przetwarzanie..."
-              : language === "ru"
-              ? "Обработка..."
-              : language === "uk"
-              ? "Обробка..."
-              : "Processing..."}
-          </span>
-        ) : (
-          <span>
-            {language === "pl"
-              ? "Zamówić"
-              : language === "ru"
-              ? "Заказать"
-              : language === "uk"
-              ? "Замовити"
-              : "Order"}{" "}
-            • {total + (deliveryInfo?.price || 0)} zł
-            {deliveryInfo && deliveryInfo.price && deliveryInfo.price > 0 && (
-              <span className="text-xs opacity-75">
-                {" "}
-                (товары: {total} zł + доставка: {deliveryInfo.price} zł)
-              </span>
-            )}
-          </span>
-        )}
-      </Button>
+        {/* Кнопка оформления */}
+        <Button
+          type="submit"
+          disabled={!isFormValid || isSubmitting}
+          className="w-full h-12 text-base font-semibold"
+        >
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin">⏳</span>
+              {language === "pl" ? "Przetwarzanie..." :
+               language === "ru" ? "Обработка..." :
+               language === "uk" ? "Обробка..." :
+               "Processing..."}
+            </span>
+          ) : (
+            <>
+              {language === "pl" ? "Złóż zamówienie" :
+               language === "ru" ? "Оформить заказ" :
+               language === "uk" ? "Оформити замовлення" :
+               "Place order"}
+              {deliveryInfo && deliveryInfo.price && deliveryInfo.price > 0 && (
+                <span className="ml-2 text-sm opacity-80">
+                  ({language === "pl" ? "towary" : language === "ru" ? "товары" : language === "uk" ? "товари" : "items"}: {total} zł + 
+                  {language === "pl" ? " dostawa" : language === "ru" ? " доставка" : language === "uk" ? " доставка" : " delivery"}: {deliveryInfo.price} zł)
+                </span>
+              )}
+            </>
+          )}
+        </Button>
+      </div>
     </form>
   );
+}
+
+// Добавляем CSS для анимации пульсации
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+    }
+  `;
+  if (!document.querySelector('style[data-pulse]')) {
+    style.setAttribute('data-pulse', 'true');
+    document.head.appendChild(style);
+  }
 }
