@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  title    String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  items MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  price       Int     // Price in cents (42.00 zł = 4200)
+  image       String?
+  isAvailable Boolean @default(true)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("menu_items")
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  total     Int         // Total in cents
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  // Данные клиента
+  customerName  String
+  customerPhone String
+  address       String
+  deliveryFee   Int     // Delivery fee in cents
+  deviceId      String? // Уникальный ID устройства для аналитики
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  itemId  String
+  title   String
+  price   Int    // Price in cents
+  qty     Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  DELIVERING
+  DONE
+  CANCELED
+}
