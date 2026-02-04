@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateUpsellHint, type UpsellHintRequest } from "@/lib/groq";
+import { aiTelemetry } from "@/lib/ai-telemetry";
 
 /**
  * POST /api/ai/upsell
@@ -26,6 +27,9 @@ export async function POST(request: NextRequest) {
       language,
     });
 
+    // Измеряем время ответа
+    const startTime = Date.now();
+
     const upsellResponse = await generateUpsellHint({
       cart,
       favoriteCategory,
@@ -33,11 +37,27 @@ export async function POST(request: NextRequest) {
       language: language || "ru",
     });
 
+    const responseTime = Date.now() - startTime;
+
+    // 📊 Логируем AI telemetry
+    aiTelemetry.logEvent({
+      type: "upsell",
+      source: upsellResponse.source,
+      confidence: upsellResponse.confidence,
+      responseTime,
+      metadata: {
+        reason: upsellResponse.reason,
+        cartSize: cart.length,
+        language,
+      },
+    });
+
     console.log("✅ AI upsell generated:", {
       text: upsellResponse.text,
       reason: upsellResponse.reason,
       confidence: upsellResponse.confidence,
       source: upsellResponse.source,
+      responseTime: `${responseTime}ms`,
     });
 
     // Если AI решил что ничего не нужно предлагать
@@ -59,6 +79,7 @@ export async function POST(request: NextRequest) {
         confidence: upsellResponse.confidence,
         source: upsellResponse.source,
         model: upsellResponse.metadata?.model,
+        responseTime,
       },
     });
   } catch (error) {

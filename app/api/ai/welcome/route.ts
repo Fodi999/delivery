@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateWelcomeMessage, generateOrderDescription, type CustomerStats } from "@/lib/groq";
+import { aiTelemetry } from "@/lib/ai-telemetry";
 
 export async function POST(req: Request) {
   try {
@@ -18,11 +19,36 @@ export async function POST(req: Request) {
 
     console.log("🤖 Generating AI welcome message for:", customerStats.name);
 
+    // Измеряем время ответа AI
+    const startTime = Date.now();
+
     // Генерируем персонализированные сообщения (теперь возвращают структуру)
     const [welcomeResponse, descriptionResponse] = await Promise.all([
       generateWelcomeMessage(customerStats, language),
       generateOrderDescription(customerStats, language),
     ]);
+
+    const responseTime = Date.now() - startTime;
+
+    // 📊 Логируем AI telemetry
+    aiTelemetry.logEvent({
+      type: "welcome",
+      source: welcomeResponse.source,
+      confidence: welcomeResponse.confidence,
+      responseTime,
+      metadata: {
+        language,
+        isVIP: customerStats.isVIP,
+        totalOrders: customerStats.totalOrders,
+      },
+    });
+
+    aiTelemetry.logEvent({
+      type: "compliment",
+      source: descriptionResponse.source,
+      confidence: descriptionResponse.confidence,
+      responseTime,
+    });
 
     console.log("✅ AI messages generated:", { 
       welcome: welcomeResponse.text, 
@@ -34,7 +60,8 @@ export async function POST(req: Request) {
       confidence: {
         welcome: welcomeResponse.confidence,
         description: descriptionResponse.confidence,
-      }
+      },
+      responseTime: `${responseTime}ms`,
     });
 
     // Возвращаем текст для обратной совместимости + метаданные для логирования
@@ -47,6 +74,7 @@ export async function POST(req: Request) {
         welcomeConfidence: welcomeResponse.confidence,
         descriptionSource: descriptionResponse.source,
         descriptionConfidence: descriptionResponse.confidence,
+        responseTime,
       },
     });
   } catch (error) {

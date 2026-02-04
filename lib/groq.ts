@@ -4,6 +4,45 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+/**
+ * Feature flag: включить/выключить AI
+ * Признак зрелого production-проекта
+ */
+const FEATURE_AI_ENABLED = process.env.NEXT_PUBLIC_FEATURE_AI !== "false";
+
+/**
+ * Нормализует текст от AI (убирает кавычки, точки, лишние пробелы)
+ * Критично для UX-стабильности
+ */
+function normalizeAIText(text: string): string {
+  return text
+    .replace(/^["'«»]|["'«»]$/g, "") // Убираем кавычки с начала/конца
+    .replace(/[.!?]+$/, "") // Убираем пунктуацию в конце
+    .replace(/\s+/g, " ") // Нормализуем пробелы
+    .trim();
+}
+
+/**
+ * Определяет confidence на основе качества ответа AI
+ */
+function calculateConfidence(
+  text: string,
+  source: "ai" | "fallback"
+): "high" | "medium" | "low" {
+  if (source === "fallback") return "medium";
+  
+  const length = text.length;
+  
+  // Слишком короткий ответ (< 5 символов) - подозрительно
+  if (length < 5) return "low";
+  
+  // Короткий но валидный (5-15 символов) - средний
+  if (length < 15) return "medium";
+  
+  // Нормальная длина (15+ символов) - высокий
+  return "high";
+}
+
 export interface CustomerStats {
   totalOrders: number;
   completedOrders: number;
@@ -39,6 +78,12 @@ export async function generateWelcomeMessage(
   customerStats: CustomerStats,
   language: "pl" | "ru" | "uk" | "en" = "ru"
 ): Promise<AIResponse> {
+  // Feature flag: если AI выключен, возвращаем fallback
+  if (!FEATURE_AI_ENABLED) {
+    console.log("🔒 AI disabled by feature flag, using fallback");
+    return getFallbackResponse("welcome", language);
+  }
+  
   try {
     const spentInZl = (customerStats.totalSpent / 100).toFixed(0);
     
@@ -135,10 +180,16 @@ Reply ONLY with the greeting.`,
       return getFallbackResponse("welcome", language);
     }
 
+    // Нормализуем текст от AI
+    const normalizedText = normalizeAIText(message);
+    
+    // Динамически определяем confidence
+    const confidence = calculateConfidence(normalizedText, "ai");
+
     return {
       type: "welcome",
-      text: message,
-      confidence: "high",
+      text: normalizedText,
+      confidence,
       source: "ai",
       metadata: {
         model: "llama-3.3-70b-versatile",
@@ -206,6 +257,12 @@ export async function generateOrderDescription(
   customerStats: CustomerStats,
   language: "pl" | "ru" | "uk" | "en" = "ru"
 ): Promise<AIResponse> {
+  // Feature flag: если AI выключен, возвращаем fallback
+  if (!FEATURE_AI_ENABLED) {
+    console.log("🔒 AI disabled by feature flag, using fallback");
+    return getFallbackResponse("compliment", language);
+  }
+  
   try {
     const spentInZl = (customerStats.totalSpent / 100).toFixed(0);
     
@@ -301,10 +358,16 @@ Reply ONLY with the compliment.`,
       return getFallbackResponse("compliment", language);
     }
 
+    // Нормализуем текст от AI
+    const normalizedText = normalizeAIText(message);
+    
+    // Динамически определяем confidence
+    const confidence = calculateConfidence(normalizedText, "ai");
+
     return {
       type: "compliment",
-      text: message,
-      confidence: "high",
+      text: normalizedText,
+      confidence,
       source: "ai",
       metadata: {
         model: "llama-3.3-70b-versatile",
@@ -343,104 +406,221 @@ export interface UpsellHintResponse extends AIResponse {
 }
 
 /**
+ * Детерминированное решение: нужен ли upsell
+ * Разделение логики: Decision (код) vs Wording (AI)
+ */
+interface UpsellDecision {
+  shouldSuggest: boolean;
+  reason: UpsellHintResponse["reason"];
+  suggestedCategory?: string;
+  context: string;
+}
+
+function decideUpsell(
+  cart: Array<{ id: string; name: string; category: string; quantity: number }>,
+  favoriteCategory?: string,
+  timeOfDay?: string
+): UpsellDecision {
+  const categories = Array.from(new Set(cart.map(item => item.category)));
+  const hasWok = categories.includes("wok");
+  const hasSushi = categories.includes("sushi");
+  const hasDrinks = categories.includes("drinks");
+  const hasRamen = categories.includes("ramen");
+  
+  // 1. Нет напитков - самая важная рекомендация
+  if (!hasDrinks && cart.length >= 2) {
+    return {
+      shouldSuggest: true,
+      reason: "complete_meal",
+      suggestedCategory: "drinks",
+      context: "no_drinks_with_food",
+    };
+  }
+  
+  // 2. Острая еда без напитка
+  if ((hasWok || hasRamen) && !hasDrinks) {
+    return {
+      shouldSuggest: true,
+      reason: "complete_meal",
+      suggestedCategory: "drinks",
+      context: "spicy_needs_drink",
+    };
+  }
+  
+  // 3. Только суши - предложить горячее
+  if (hasSushi && !hasWok && !hasRamen && cart.length < 3) {
+    return {
+      shouldSuggest: true,
+      reason: "popular_with",
+      suggestedCategory: "wok",
+      context: "sushi_with_hot",
+    };
+  }
+  
+  // 4. Любимая категория клиента
+  if (favoriteCategory && !categories.includes(favoriteCategory) && cart.length >= 1) {
+    return {
+      shouldSuggest: true,
+      reason: "category_match",
+      suggestedCategory: favoriteCategory,
+      context: "favorite_category",
+    };
+  }
+  
+  // 5. Время суток (вечер - напитки популярнее)
+  if (timeOfDay === "evening" && !hasDrinks && cart.length >= 1) {
+    return {
+      shouldSuggest: true,
+      reason: "time_based",
+      suggestedCategory: "drinks",
+      context: "evening_drinks",
+    };
+  }
+  
+  // Заказ полный
+  return {
+    shouldSuggest: false,
+    reason: "none",
+    context: "order_complete",
+  };
+}
+
+/**
  * Генерирует умные рекомендации товаров (silent upsell)
  * AI не продаёт, а узнаёт и мягко предлагает
+ * 
+ * Архитектура: Decision (детерминизм) → Wording (AI)
  * 
  * @returns Структурированный ответ с причиной, ID товара и текстом
  */
 export async function generateUpsellHint(
   request: UpsellHintRequest
 ): Promise<UpsellHintResponse> {
+  // Feature flag: если AI выключен, используем только детерминированную логику
+  if (!FEATURE_AI_ENABLED) {
+    console.log("🔒 AI disabled by feature flag, using deterministic logic only");
+    const decision = decideUpsell(request.cart, request.favoriteCategory, request.timeOfDay);
+    
+    if (!decision.shouldSuggest) {
+      return {
+        type: "upsell",
+        text: "",
+        confidence: "low",
+        source: "fallback",
+        reason: "none",
+      };
+    }
+    
+    // Простая fallback формулировка без AI
+    const fallbackMessages: Record<string, Record<string, string>> = {
+      pl: {
+        drinks: "Może napój?",
+        wok: "Może Wok?",
+        sushi: "Może sushi?",
+        ramen: "Może ramen?",
+      },
+      ru: {
+        drinks: "Может напиток?",
+        wok: "Может Wok?",
+        sushi: "Может суши?",
+        ramen: "Может рамен?",
+      },
+      uk: {
+        drinks: "Може напій?",
+        wok: "Може Wok?",
+        sushi: "Може суші?",
+        ramen: "Може рамен?",
+      },
+      en: {
+        drinks: "Maybe a drink?",
+        wok: "Maybe Wok?",
+        sushi: "Maybe sushi?",
+        ramen: "Maybe ramen?",
+      },
+    };
+    
+    const text = fallbackMessages[request.language]?.[decision.suggestedCategory || "drinks"] || "";
+    
+    return {
+      type: "upsell",
+      text,
+      confidence: "medium",
+      source: "fallback",
+      reason: decision.reason,
+    };
+  }
+  
   try {
     const { cart, favoriteCategory, timeOfDay, language } = request;
     
-    // Определяем контекст заказа
+    // 1. DECISION: Детерминированное решение (код, не AI)
+    const decision = decideUpsell(cart, favoriteCategory, timeOfDay);
+    
+    if (!decision.shouldSuggest) {
+      return {
+        type: "upsell",
+        text: "",
+        confidence: "low",
+        source: "ai",
+        reason: "none",
+      };
+    }
+    
+    // 2. WORDING: AI генерирует формулировку на основе решения
     const categories = Array.from(new Set(cart.map(item => item.category)));
-    const hasWok = categories.includes("wok");
-    const hasSushi = categories.includes("sushi");
-    const hasDrinks = categories.includes("drinks");
-    const hasRamen = categories.includes("ramen");
     
     const languagePrompts = {
       pl: `Jesteś ekspertem kulinarnym w restauracji japońskiej.
 
-Kontekst zamówienia:
+Kontekst:
 - Zamówione kategorie: ${categories.join(", ")}
-- Ulubiona kategoria klienta: ${favoriteCategory || "nieznana"}
-- Pora dnia: ${timeOfDay}
-- Zamówione pozycje: ${cart.map(i => i.name).join(", ")}
+- Sugerowana kategoria: ${decision.suggestedCategory}
+- Powód: ${decision.context}
 
-Twoja zadanie: zaproponować 1 dodatkowy produkt, który naturalnie uzupełnia zamówienie (NIE sprzedawaj, doradzaj).
+Stwórz krótką (max 10 słów), przyjazną sugestię bez agresywnej sprzedaży.
 
-Zasady:
-${!hasDrinks ? "- Brak napoju w zamówieniu - rozważ napój" : ""}
-${hasWok || hasRamen ? "- Dania ostre - rozważ napój lub dodatek" : ""}
-${hasSushi && !hasWok ? "- Tylko sushi - rozważ zupę lub Wok" : ""}
-- Maximum 10 słów
-- Ton: przyjazna sugestia, NIE reklama
-- Format: "Do [kategoria] często bierze się [produkt]"
+Format przykład: "Do Wok często bierze się napój"
 
-Odpowiedz TYLKO sugestią lub "BRAK" jeśli zamówienie kompletne.`,
+Odpowiedz TYLKO sugestią.`,
 
       ru: `Ты эксперт японской кухни в ресторане.
 
-Контекст заказа:
+Контекст:
 - Заказанные категории: ${categories.join(", ")}
-- Любимая категория клиента: ${favoriteCategory || "неизвестна"}
-- Время суток: ${timeOfDay}
-- Заказанные позиции: ${cart.map(i => i.name).join(", ")}
+- Рекомендуемая категория: ${decision.suggestedCategory}
+- Причина: ${decision.context}
 
-Твоя задача: предложить 1 дополнительный продукт, который естественно дополнит заказ (НЕ продавай, советуй).
+Создай короткую (макс 10 слов), дружескую рекомендацию без агрессивной продажи.
 
-Правила:
-${!hasDrinks ? "- Нет напитка в заказе - рассмотри напиток" : ""}
-${hasWok || hasRamen ? "- Острые блюда - рассмотри напиток или добавку" : ""}
-${hasSushi && !hasWok ? "- Только суши - рассмотри суп или Wok" : ""}
-- Максимум 10 слов
-- Тон: дружеский совет, НЕ реклама
-- Формат: "К [категория] часто берут [продукт]"
+Пример формата: "К Wok часто берут напиток"
 
-Ответь ТОЛЬКО предложением или "БRAK" если заказ полный.`,
+Ответь ТОЛЬКО рекомендацией.`,
 
       uk: `Ти експерт японської кухні в ресторані.
 
-Контекст замовлення:
+Контекст:
 - Замовлені категорії: ${categories.join(", ")}
-- Улюблена категорія клієнта: ${favoriteCategory || "невідома"}
-- Час доби: ${timeOfDay}
-- Замовлені позиції: ${cart.map(i => i.name).join(", ")}
+- Рекомендована категорія: ${decision.suggestedCategory}
+- Причина: ${decision.context}
 
-Твоя задача: запропонувати 1 додатковий продукт, який природно доповнить замовлення (НЕ продавай, радь).
+Створи коротку (макс 10 слів), дружню рекомендацію без агресивного продажу.
 
-Правила:
-${!hasDrinks ? "- Немає напою в замовленні - розглянь напій" : ""}
-${hasWok || hasRamen ? "- Гострі страви - розглянь напій або добавку" : ""}
-${hasSushi && !hasWok ? "- Тільки суші - розглянь суп або Wok" : ""}
-- Максимум 10 слів
-- Тон: дружня порада, НЕ реклама
-- Формат: "До [категорія] часто беруть [продукт]"
+Приклад формату: "До Wok часто беруть напій"
 
-Відповідь ТІЛЬКИ пропозицією або "БRAK" якщо замовлення повне.`,
+Відповідь ТІЛЬКИ рекомендацією.`,
 
       en: `You are a Japanese cuisine expert at a restaurant.
 
-Order context:
+Context:
 - Ordered categories: ${categories.join(", ")}
-- Customer's favorite category: ${favoriteCategory || "unknown"}
-- Time of day: ${timeOfDay}
-- Ordered items: ${cart.map(i => i.name).join(", ")}
+- Suggested category: ${decision.suggestedCategory}
+- Reason: ${decision.context}
 
-Your task: suggest 1 additional product that naturally complements the order (DON'T sell, advise).
+Create a short (max 10 words), friendly suggestion without aggressive selling.
 
-Rules:
-${!hasDrinks ? "- No drink in order - consider drink" : ""}
-${hasWok || hasRamen ? "- Spicy dishes - consider drink or side" : ""}
-${hasSushi && !hasWok ? "- Only sushi - consider soup or Wok" : ""}
-- Maximum 10 words
-- Tone: friendly suggestion, NOT advertisement
-- Format: "With [category] people often get [product]"
+Example format: "With Wok people often get a drink"
 
-Reply ONLY with suggestion or "NONE" if order is complete.`,
+Reply ONLY with the suggestion.`,
     };
 
     const completion = await groq.chat.completions.create({
@@ -451,42 +631,37 @@ Reply ONLY with suggestion or "NONE" if order is complete.`,
         },
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.4, // Умеренная креативность
-      max_tokens: 60,
+      temperature: 0.3, // Снижено: текст детерминирован, нужна только формулировка
+      max_tokens: 50,
     });
 
     const message = completion.choices[0]?.message?.content?.trim() || "";
     
-    // Если AI не предложил ничего
-    if (!message || message.includes("БRAK") || message.includes("NONE") || message.includes("BRAK")) {
+    if (!message) {
       return {
         type: "upsell",
         text: "",
         confidence: "low",
-        source: "ai",
-        reason: "none",
+        source: "fallback",
+        reason: decision.reason,
       };
     }
 
-    // Определяем причину рекомендации
-    let reason: UpsellHintResponse["reason"] = "popular_with";
-    if (!hasDrinks && message.toLowerCase().includes("napój") || message.toLowerCase().includes("напиток") || message.toLowerCase().includes("напій") || message.toLowerCase().includes("drink")) {
-      reason = "complete_meal";
-    } else if (favoriteCategory && message.toLowerCase().includes(favoriteCategory)) {
-      reason = "category_match";
-    } else if (message.toLowerCase().includes("wok") || message.toLowerCase().includes("ramen")) {
-      reason = "popular_with";
-    }
+    // Нормализуем текст от AI
+    const normalizedText = normalizeAIText(message);
+    
+    // Confidence зависит от качества ответа
+    const confidence = calculateConfidence(normalizedText, "ai");
 
     return {
       type: "upsell",
-      text: message,
-      confidence: "high",
+      text: normalizedText,
+      confidence,
       source: "ai",
-      reason,
+      reason: decision.reason,
       metadata: {
         model: "llama-3.3-70b-versatile",
-        temperature: 0.4,
+        temperature: 0.3,
         tokens: completion.usage?.total_tokens,
       },
     };
