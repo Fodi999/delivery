@@ -20,9 +20,9 @@ import {
 import { useCustomerLookup } from "@/lib/hooks/use-customer-lookup";
 import { formatPrice } from "@/lib/price";
 import { menuItems } from "@/lib/menu-data";
-import { PersonSelector } from "./PersonSelector";
-import { AIRecommendationCard, AISuggestions } from "./AIRecommendations";
-import { DeliveryMapSection } from "./DeliveryMapSection";
+import { PersonSelector } from "./core/PersonSelector";
+import { AIRecommendationCard, AISuggestions } from "./ai/AIRecommendations";
+import { DeliveryMapSection } from "./delivery/DeliveryMapSection";
 
 export function CheckoutForm() {
   const { isDark, language, city } = useApp();
