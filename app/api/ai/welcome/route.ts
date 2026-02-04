@@ -18,17 +18,36 @@ export async function POST(req: Request) {
 
     console.log("🤖 Generating AI welcome message for:", customerStats.name);
 
-    // Генерируем персонализированные сообщения
-    const [welcomeMessage, description] = await Promise.all([
+    // Генерируем персонализированные сообщения (теперь возвращают структуру)
+    const [welcomeResponse, descriptionResponse] = await Promise.all([
       generateWelcomeMessage(customerStats, language),
       generateOrderDescription(customerStats, language),
     ]);
 
-    console.log("✅ AI messages generated:", { welcomeMessage, description });
+    console.log("✅ AI messages generated:", { 
+      welcome: welcomeResponse.text, 
+      description: descriptionResponse.text,
+      sources: {
+        welcome: welcomeResponse.source,
+        description: descriptionResponse.source,
+      },
+      confidence: {
+        welcome: welcomeResponse.confidence,
+        description: descriptionResponse.confidence,
+      }
+    });
 
+    // Возвращаем текст для обратной совместимости + метаданные для логирования
     return NextResponse.json({
-      welcomeMessage,
-      description,
+      welcomeMessage: welcomeResponse.text,
+      description: descriptionResponse.text,
+      // Дополнительные метаданные для A/B тестов и аналитики
+      meta: {
+        welcomeSource: welcomeResponse.source,
+        welcomeConfidence: welcomeResponse.confidence,
+        descriptionSource: descriptionResponse.source,
+        descriptionConfidence: descriptionResponse.confidence,
+      },
     });
   } catch (error) {
     console.error("AI welcome generation error:", error);
