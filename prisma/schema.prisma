@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,46 +9,60 @@ datasource db {
   provider = "postgresql"
 }
 
-model categories {
-  id         String       @id
-  slug       String       @unique
-  title      String
-  isActive   Boolean      @default(true)
-  order      Int          @default(0)
-  menu_items menu_items[]
+model Category {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  title    String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  items MenuItem[]
+
+  @@map("categories")
 }
 
-model menu_items {
-  id          String     @id
+model MenuItem {
+  id          String  @id @default(cuid())
   title       String
   description String?
-  price       Int
+  price       Int     // Price in cents (42.00 zł = 4200)
   image       String?
-  categoryId  String
-  isAvailable Boolean    @default(true)
-  categories  categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  isAvailable Boolean @default(true)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("menu_items")
 }
 
-model order_items {
-  id      String @id
-  orderId String
-  itemId  String
-  title   String
-  price   Int
-  qty     Int
-  orders  orders @relation(fields: [orderId], references: [id], onDelete: Cascade)
-}
+model Order {
+  id        String      @id @default(cuid())
+  total     Int         // Total in cents
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
 
-model orders {
-  id            String        @id
-  total         Int
-  status        OrderStatus   @default(PENDING)
-  createdAt     DateTime      @default(now())
+  // Данные клиента
   customerName  String
   customerPhone String
   address       String
-  deliveryFee   Int
-  order_items   order_items[]
+  deliveryFee   Int     // Delivery fee in cents
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  itemId  String
+  title   String
+  price   Int    // Price in cents
+  qty     Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
 }
 
 enum OrderStatus {
