@@ -13,11 +13,20 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
+// CRITICAL: Remove channel_binding for Vercel Edge/Serverless compatibility
+// Neon pooler with channel_binding=require can cause connection issues
+const connectionString = process.env.DATABASE_URL.replace(
+  '&channel_binding=require',
+  ''
+);
+
+console.log("🔌 Connection string configured (channel_binding removed for compatibility)");
+
 // Create connection pool
 if (!globalForPrisma.pool) {
   console.log("🔌 Creating PostgreSQL connection pool...");
   globalForPrisma.pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     max: 10, // Maximum pool size
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,

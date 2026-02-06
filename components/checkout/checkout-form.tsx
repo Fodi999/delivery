@@ -646,6 +646,14 @@ export function CheckoutForm() {
       deliveryFee: deliveryFeeInCents,
     };
 
+    console.log("📦 Submitting order data:", {
+      itemsCount: orderData.items.length,
+      total: orderData.total,
+      deliveryFee: orderData.deliveryFee,
+      customer: orderData.customer,
+      items: orderData.items,
+    });
+
     try {
       // Отправка заказа на backend
       const response = await fetch("/api/orders", {
