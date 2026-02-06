@@ -20,9 +20,17 @@ export interface CreateOrderRequest {
 }
 
 export async function POST(req: Request) {
+  let body: CreateOrderRequest;
+  
   try {
-    const body: CreateOrderRequest = await req.json();
-
+    body = await req.json();
+    
+    console.log("📦 Creating order:", {
+      itemsCount: body.items.length,
+      total: body.total,
+      customerPhone: body.customer.phone,
+    });
+    
     // Validation
     if (!body.items || body.items.length === 0) {
       return NextResponse.json(
@@ -42,6 +50,7 @@ export async function POST(req: Request) {
     const cleanPhone = body.customer.phone.replace(/[\s\-\(\)]/g, "");
 
     // Create order in database
+    console.log("💾 Inserting order into database...");
     const order = await prisma.order.create({
       data: {
         total: body.total,
@@ -64,6 +73,8 @@ export async function POST(req: Request) {
       },
     });
 
+    console.log("✅ Order created:", order.id);
+
     // Convert DB order to Telegram format
     const telegramOrder: Order = {
       id: parseInt(order.id.substring(0, 8), 36), // Simple numeric ID for display
@@ -84,9 +95,11 @@ export async function POST(req: Request) {
 
     // Send notification to Telegram (non-blocking)
     try {
+      console.log("📱 Sending to Telegram...");
       await sendOrderToTelegram(telegramOrder);
+      console.log("✅ Telegram notification sent");
     } catch (telegramError) {
-      console.error("Telegram notification failed:", telegramError);
+      console.error("❌ Telegram notification failed:", telegramError);
       // Continue - order is saved
     }
 
@@ -96,9 +109,19 @@ export async function POST(req: Request) {
       message: "Order created successfully",
     });
   } catch (error) {
-    console.error("ORDER ERROR:", error);
+    console.error("❌ ORDER ERROR:", error);
+    console.error("Error details:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error,
+    });
+    
     return NextResponse.json(
-      { error: "Failed to process order" },
+      { 
+        error: "Failed to process order",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
