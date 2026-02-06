@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/header";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
-import { OrderSummary } from "@/components/checkout/order-summary";
+import { OrderSummary } from "@/components/checkout/core/order-summary";
 import { useApp } from "@/context/app-context";
 import { useCartStore } from "@/store/cart-store";
 import { useRouter } from "next/navigation";
