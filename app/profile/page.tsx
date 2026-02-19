@@ -53,67 +53,61 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(64px+env(safe-area-inset-bottom)+16px)] md:pb-8">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold">
+    <div className={`min-h-screen transition-all duration-700 pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-16 ${
+      isDark ? 'bg-[#0a0a0c] text-white' : 'bg-[#fafafb] text-black'
+    }`}>
+      {/* 2026 Header */}
+      <div className="sticky top-0 z-40 glass border-b border-white/5">
+        <div className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between">
+          <h1 className="text-3xl font-black tracking-tighter leading-none">
             {language === 'pl' ? 'Ustawienia' :
              language === 'en' ? 'Settings' :
              language === 'uk' ? 'Налаштування' :
              'Настройки'}
           </h1>
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Settings2 className="w-5 h-5 text-primary stroke-[2.5]" />
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
-        {/* App Info Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <Settings2 className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <CardTitle>FodiFood</CardTitle>
-                <CardDescription>
-                  {language === 'pl' ? 'Zarządzaj ustawieniami aplikacji' :
-                   language === 'en' ? 'Manage app settings' :
-                   language === 'uk' ? 'Керуйте налаштуваннями додатку' :
-                   'Управление настройками приложения'}
-                </CardDescription>
-              </div>
+      <div className="max-w-3xl mx-auto px-6 py-12 space-y-12">
+        {/* App Info - Premium Badge style */}
+        <div className="relative group overflow-hidden rounded-[2.5rem] p-8 glass border-white/5 shadow-2xl">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full" />
+          <div className="flex items-center gap-6 relative">
+            <div className="w-24 h-24 rounded-[2rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 transform -rotate-12 transition-transform group-hover:rotate-0 duration-500">
+               <span className="text-4xl font-black text-primary-foreground tracking-tighter">FF</span>
             </div>
-          </CardHeader>
-        </Card>
+            <div>
+              <h2 className="text-4xl font-black tracking-tighter mb-2">FodiFood Premium</h2>
+              <p className="text-sm font-black uppercase tracking-widest opacity-40">
+                {language === 'ru' ? 'Статус: Версия 2026' : 'Status: 2026 Edition'}
+              </p>
+            </div>
+          </div>
+        </div>
 
-        {/* Location & Language Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {language === 'pl' ? 'Podstawowe ustawienia' :
-               language === 'en' ? 'Basic settings' :
-               language === 'uk' ? 'Основні налаштування' :
-               'Основные настройки'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {/* Basic Settings - Glass Cards */}
+        <div className="space-y-6">
+          <h3 className="text-xs font-black uppercase tracking-[0.3em] opacity-40 ml-4 mb-4">
+            {language === 'ru' ? 'Персонализация' : 'Personalization'}
+          </h3>
+          
+          <div className="glass rounded-[2.5rem] border border-white/5 p-8 sm:p-10 space-y-10">
             {/* City Selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                {language === 'pl' ? 'Miasto' :
-                 language === 'en' ? 'City' :
-                 language === 'uk' ? 'Місто' :
-                 'Город'}
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+                <MapPin className="w-3 h-3 text-primary" />
+                {language === 'ru' ? 'Ваш город' : 'Current City'}
               </label>
               <Select value={city} onValueChange={setCity}>
-                <SelectTrigger className="w-full h-12">
+                <SelectTrigger className="w-full h-16 rounded-2xl bg-muted/30 border-none px-6 text-lg font-bold hover:bg-muted/50 transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-2xl border-white/10 glass">
                   {cities.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
+                    <SelectItem key={c.value} value={c.value} className="rounded-xl font-bold p-4">
                       {c.label[language]}
                     </SelectItem>
                   ))}
@@ -122,23 +116,20 @@ export default function SettingsPage() {
             </div>
 
             {/* Language Selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                {language === 'pl' ? 'Język' :
-                 language === 'en' ? 'Language' :
-                 language === 'uk' ? 'Мова' :
-                 'Язык'}
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+                <Globe className="w-3 h-3 text-primary" />
+                {language === 'ru' ? 'Язык интерфейса' : 'App Language'}
               </label>
               <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="w-full h-12">
+                <SelectTrigger className="w-full h-16 rounded-2xl bg-muted/30 border-none px-6 text-lg font-bold hover:bg-muted/50 transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-2xl border-white/10 glass">
                   {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      <span className="flex items-center gap-2">
-                        <span>{lang.flag}</span>
+                    <SelectItem key={lang.value} value={lang.value} className="rounded-xl font-bold p-4">
+                      <span className="flex items-center gap-3">
+                        <span className="text-2xl">{lang.flag}</span>
                         <span>{lang.label}</span>
                       </span>
                     </SelectItem>
@@ -147,76 +138,25 @@ export default function SettingsPage() {
               </Select>
             </div>
 
-            {/* Theme Toggle */}
-            <div className="flex items-center justify-between py-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                {language === 'pl' ? 'Ciemny motyw' :
-                 language === 'en' ? 'Dark theme' :
-                 language === 'uk' ? 'Темна тема' :
-                 'Темная тема'}
-              </label>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsDark(!isDark)}
-                className="h-12 w-12 rounded-full"
-                aria-label="Toggle theme"
-              >
-                {isDark ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )}
-              </Button>
+            {/* Theme Toggle Button */}
+            <div className="pt-4 border-t border-white/5">
+               <button
+                  type="button"
+                  onClick={() => setIsDark(!isDark)}
+                  className="w-full h-16 rounded-2xl bg-muted/30 hover:bg-muted/50 p-6 flex items-center justify-between transition-all duration-300"
+               >
+                  <div className="flex items-center gap-4">
+                    {isDark ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-indigo-400" />}
+                    <span className="text-lg font-bold">
+                       {isDark ? (language === 'ru' ? 'Светлая тема' : 'Light Mode') : (language === 'ru' ? 'Темная тема' : 'Dark Mode')}
+                    </span>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full relative transition-colors duration-500 ${isDark ? 'bg-primary' : 'bg-neutral-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-500 shadow-sm ${isDark ? 'left-7' : 'left-1'}`} />
+                  </div>
+               </button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* App Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {language === 'pl' ? 'Preferencje' :
-               language === 'en' ? 'Preferences' :
-               language === 'uk' ? 'Налаштування' :
-               'Настройки'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="ghost" className="w-full justify-between h-12" disabled>
-              <span className="flex items-center gap-3">
-                <Bell className="w-5 h-5" />
-                {language === 'pl' ? 'Powiadomienia' :
-                 language === 'en' ? 'Notifications' :
-                 language === 'uk' ? 'Сповіщення' :
-                 'Уведомления'}
-              </span>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </Button>
-
-            <Button variant="ghost" className="w-full justify-between h-12" disabled>
-              <span className="flex items-center gap-3">
-                <Info className="w-5 h-5" />
-                {language === 'pl' ? 'O aplikacji' :
-                 language === 'en' ? 'About app' :
-                 language === 'uk' ? 'Про додаток' :
-                 'О приложении'}
-              </span>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* App Info */}
-        <div className="text-center text-sm text-muted-foreground pt-4 pb-4">
-          <p className="font-medium">FodiFood Delivery v1.0.0</p>
-          <p className="mt-2">
-            {language === 'pl' ? 'Wykonane z ❤️ w Gdańsku' :
-             language === 'en' ? 'Made with ❤️ in Gdańsk' :
-             language === 'uk' ? 'Зроблено з ❤️ в Гданську' :
-             'Сделано с ❤️ в Гданьске'}
-          </p>
+          </div>
         </div>
       </div>
     </div>

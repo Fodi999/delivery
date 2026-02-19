@@ -34,11 +34,7 @@ export function MobileHeader({ showBackButton = false, title }: MobileHeaderProp
 
   if (!mounted) {
     return (
-      <header className={`md:hidden sticky top-0 z-50 backdrop-blur-xl border-b ${
-        isDark ? 'bg-black/80 border-neutral-800' : 'bg-white/80 border-neutral-200'
-      }`}>
-        <div className="h-14" />
-      </header>
+      <header className="md:hidden sticky top-0 z-50 glass border-b border-white/5 h-14" />
     );
   }
 
@@ -55,11 +51,7 @@ export function MobileHeader({ showBackButton = false, title }: MobileHeaderProp
   };
 
   return (
-    <header className={`md:hidden sticky top-0 z-50 backdrop-blur-xl border-b transition-colors ${
-      isDark 
-        ? 'bg-black/80 border-neutral-800' 
-        : 'bg-white/80 border-neutral-200'
-    }`}>
+    <header className="md:hidden sticky top-0 z-50 glass border-b border-white/5 transition-all duration-500">
       <div className="flex items-center justify-between px-4 h-14">
         {/* Left: Back button or empty space */}
         <div className="w-10">

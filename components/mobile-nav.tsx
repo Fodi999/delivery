@@ -109,14 +109,16 @@ export function MobileNav({ cartOpen, onCartOpenChange }: MobileNavProps) {
     return null;
   }
 
+  if (!isVisible) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:hidden pointer-events-none translate-y-24 transition-transform duration-500" />
+    );
+  }
+
   return (
-    <>
-      {/* Mobile Bottom Navigation - iPhone Safari Style */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 md:hidden">
       <nav 
-        className={cn(
-          "fixed left-0 right-0 z-50 md:hidden border-t bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/95 transition-all duration-300 ease-in-out",
-          isVisible ? "bottom-0" : "-bottom-24"
-        )}
+        className="glass rounded-full px-6 py-3 border border-white/10 shadow-2xl flex items-center justify-between max-w-sm mx-auto"
       >
         <div className="flex items-center justify-around h-16 px-2 max-w-md mx-auto">
           {navItems.map((item) => {
@@ -239,6 +241,6 @@ export function MobileNav({ cartOpen, onCartOpenChange }: MobileNavProps) {
         {/* Safe area padding for devices with notch */}
         <div className="h-[env(safe-area-inset-bottom)] bg-background" />
       </nav>
-    </>
+    </div>
   );
 }

@@ -40,140 +40,81 @@ export default function Home() {
   ];
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
+    <div className={`min-h-screen transition-all duration-700 selection:bg-primary/30 ${
       isDark 
-        ? 'bg-black text-white' 
-        : 'bg-white text-black'
+        ? 'bg-[#0a0a0c] text-neutral-100' 
+        : 'bg-[#fafafb] text-neutral-900'
     }`}>
       {/* Headers: Mobile + Desktop */}
       <MobileHeader />
       <Header />
 
       {/* Main Content - ✅ Proper bottom padding for sticky CTA + bottom nav */}
-      <main className="px-4 sm:px-6 md:px-12 pb-[calc(64px+64px+env(safe-area-inset-bottom)+16px)] md:pb-8">
-        {/* 🔥 MOBILE-FIRST HERO - Super Simple */}
-        <div className="py-8 sm:py-12 md:py-16 text-center max-w-4xl mx-auto">
-          {/* Simplified Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-3 sm:mb-4 leading-tight">
-            {t.headline}
-          </h1>
+      <main className="px-4 sm:px-6 md:px-12 pb-[calc(64px+64px+env(safe-area-inset-bottom)+16px)] md:pb-16 max-w-7xl mx-auto">
+        {/* 🔥 2026 HERO - Ultra-Premium & Emotional */}
+        <div className="py-12 sm:py-20 md:py-32 text-center relative overflow-hidden">
+          {/* Background Glows */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 blur-[120px] rounded-full -z-10 animate-pulse pointer-events-none" />
           
-          {/* Compact Trust Info - One Line on Mobile */}
-          <p className={`text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-12 flex items-center justify-center gap-3 flex-wrap ${
-            isDark ? 'text-neutral-400' : 'text-neutral-600'
-          }`}>
-            <span className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-medium">4.8</span>
-            </span>
-            <span className={isDark ? 'text-neutral-700' : 'text-neutral-300'}>•</span>
-            <span className="flex items-center gap-1">
-              <Truck className="w-4 h-4" />
-              <span>30–45 min</span>
-            </span>
-          </p>
-
-          {/* Desktop-only CTA buttons */}
-          <div className="hidden md:flex gap-4 justify-center mb-12">
-            <Button
-              onClick={() => router.push('/menu')}
-              size="lg"
-              className={`px-8 rounded-full h-14 text-lg font-semibold ${
-                isDark 
-                  ? 'bg-white text-black hover:bg-neutral-200' 
-                  : 'bg-black text-white hover:bg-neutral-800'
-              }`}
-            >
-              {t.orderNow}
-            </Button>
-            <Button
-              onClick={() => router.push('/menu')}
-              size="lg"
-              variant="ghost"
-              className="px-8 rounded-full h-14 text-lg font-semibold"
-            >
-              {t.viewMenu}
-            </Button>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-widest uppercase mb-8 border border-primary/20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Star className="w-3 h-3 fill-primary" />
+            {language === 'ru' ? 'Премиум доставка в Гданьске' : 'Premium delivery in Gdańsk'}
           </div>
 
-          {/* 🔥 MICRO-CONTEXT - Desktop only */}
-          <div className={`hidden md:block text-center text-sm mb-12 ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>
-            <p className="flex items-center justify-center gap-2 flex-wrap">
-              <span>{language === 'pl' ? 'Przeglądaj menu' : language === 'en' ? 'Browse menu' : language === 'uk' ? 'Переглянути меню' : 'Просмотр меню'}</span>
-              <span>→</span>
-              <span>{language === 'pl' ? 'Dodaj do koszyka' : language === 'en' ? 'Add to cart' : language === 'uk' ? 'Додати до кошика' : 'Добавить в корзину'}</span>
-              <span>→</span>
-              <span>{language === 'pl' ? 'Checkout' : language === 'en' ? 'Checkout' : language === 'uk' ? 'Оформити' : 'Оформить'}</span>
-            </p>
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter mb-6 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
+            {t.headline.split(' ').map((word, i) => (
+              <span key={i} className={i === 1 ? 'text-primary' : ''}>{word} </span>
+            ))}
+          </h1>
+          
+          <p className={`text-base sm:text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed opacity-80 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 ${
+            isDark ? 'text-neutral-400' : 'text-neutral-600'
+          }`}>
+            {language === 'ru' ? 'Изысканная японская кухня с доставкой за 30 минут прямо к вашей двери.' : 'Exquisite Japanese cuisine delivered in 30 minutes right to your door.'}
+          </p>
+
+          <div className="flex items-center justify-center gap-8 flex-wrap animate-in fade-in duration-1000 delay-300">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-2xl font-bold">4.8</span>
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(i => <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
+              </div>
+              <span className="text-[10px] uppercase tracking-tighter opacity-50 font-bold">Rating</span>
+            </div>
+            <div className="w-px h-10 bg-border/50" />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-2xl font-bold">35</span>
+              <span className="text-xs font-bold leading-none">min</span>
+              <span className="text-[10px] uppercase tracking-tighter opacity-50 font-bold">Delivery</span>
+            </div>
           </div>
         </div>
 
-        {/* 🔥 HORIZONTAL CATEGORY SCROLLER - Mobile Optimized */}
-        <div className="mb-8 sm:mb-12">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6">
-            {language === 'pl' ? 'Kategorie' :
-             language === 'en' ? 'Categories' :
-             language === 'uk' ? 'Категорії' :
-             'Категории'}
-          </h2>
-          
-          {/* Mobile: Horizontal Scroll */}
-          <div className="md:hidden overflow-x-auto touch-pan-x scrollbar-hide -mx-4 px-4">
-            <div className="flex gap-3 pb-2">
-              {categories.map((category) => (
-                <button
-                  key={category.key}
-                  onClick={() => router.push(`/menu/${category.key}`)}
-                  className={`relative flex-shrink-0 w-32 h-32 rounded-2xl overflow-hidden ${
-                    isDark ? 'bg-neutral-900' : 'bg-neutral-100'
-                  }`}
-                >
-                  <Image
-                    src={category.image}
-                    alt={t.categories[category.key].name}
-                    fill
-                    className="object-cover"
-                    sizes="128px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-end p-3">
-                    <span className="text-white font-semibold text-sm">
-                      {t.categories[category.key].name}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop: Grid */}
-          <div className="hidden md:grid grid-cols-3 gap-6">
-            {categories.map((category) => (
-              <Card
-                key={category.key}
-                onClick={() => router.push(`/menu/${category.key}`)}
-                className={`p-0 cursor-pointer group rounded-2xl overflow-hidden ${
-                  isDark 
-                    ? 'bg-neutral-900 border-neutral-800 hover:bg-neutral-800' 
-                    : 'bg-neutral-50 border-neutral-200 hover:bg-neutral-100'
-                }`}
-              >
-                <div className="relative h-44 w-full">
-                  <Image
-                    src={category.image}
-                    alt={t.categories[category.key].name}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
-                    sizes="400px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end p-4">
-                    <span className="text-white font-semibold text-lg">
-                      {t.categories[category.key].name}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+        {/* 🔥 CATEGORIES - Grid with 2026 Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-24">
+          {categories.map((cat, idx) => (
+            <Card 
+              key={cat.key}
+              onClick={() => router.push(`/menu/${cat.key}`)}
+              className="group cursor-pointer overflow-hidden border-none bg-muted/30 hover:bg-muted/50 transition-all duration-500 rounded-[2rem] aspect-[4/5] sm:aspect-square relative"
+            >
+              <Image
+                src={cat.image}
+                alt={cat.name}
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                priority={idx === 0}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8 sm:p-10">
+                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tighter mb-2 group-hover:translate-x-2 transition-transform duration-500">
+                  {cat.name}
+                </h2>
+                <p className="text-white/60 text-sm font-medium mb-4 group-hover:translate-x-2 transition-transform duration-500 delay-75">
+                  {language === 'ru' ? 'Посмотреть меню' : 'Explore menu'} →
+                </p>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* 🔥 POPULAR ITEMS - Fill the void */}

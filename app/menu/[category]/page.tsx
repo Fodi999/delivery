@@ -46,8 +46,8 @@ export default function MenuCategoryPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      isDark ? 'bg-black text-white' : 'bg-white text-black'
+    <div className={`min-h-screen transition-all duration-700 ${
+      isDark ? 'bg-[#0a0a0c] text-white' : 'bg-[#fafafb] text-black'
     }`}>
       {/* Headers: Mobile + Desktop */}
       <MobileHeader />
@@ -61,100 +61,85 @@ export default function MenuCategoryPage() {
       <MenuCategories />
 
       {/* Menu Items - ✅ Mobile-first grid with proper spacing */}
-      <main className="px-4 sm:px-6 md:px-12 py-6 pb-[calc(64px+env(safe-area-inset-bottom)+16px)] md:pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <main className="px-4 sm:px-6 md:px-12 py-8 pb-[calc(110px+env(safe-area-inset-bottom))] md:pb-16 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {items.map((item) => (
             <Card
               key={item.id}
-              className={`overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative group p-0 h-[340px] sm:h-[400px] ${
-                isDark
-                  ? "bg-neutral-900 border-neutral-800"
-                  : "bg-white border-neutral-200"
-              }`}
+              className="group overflow-hidden rounded-[2.5rem] border-none bg-muted/30 aspect-[4/5] sm:aspect-[3/4] relative transition-all duration-500 hover:scale-[1.02] active:scale-[0.98]"
             >
-              {/* IMAGE - Full card background */}
+              {/* IMAGE - Full card background with parallax-like effect on hover */}
               <img
                 src={item.image}
                 alt={item.nameTranslations[language]}
-                className="w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
 
-              {/* BADGES - Top left corner */}
-              {item.id.includes('s4') && (
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-red-500/90 text-white backdrop-blur-sm">
-                    🌶 {language === 'pl' ? 'Ostre' : language === 'ru' ? 'Острое' : language === 'uk' ? 'Гостре' : 'Spicy'}
+              {/* OVERLAY GRADIENT - More cinematic */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80 transition-opacity duration-500 group-hover:opacity-90" />
+
+              {/* BADGES - Ultra minimal 2026 style */}
+              <div className="absolute top-6 left-6 flex flex-wrap gap-2 z-10">
+                {item.id.includes('s4') && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-500 text-white shadow-lg shadow-red-500/20">
+                    {language === 'ru' ? 'Острое' : 'Spicy'}
                   </span>
-                </div>
-              )}
-              {item.id.includes('1') && (
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-500/90 text-white backdrop-blur-sm">
-                    ⭐ Bestseller
+                )}
+                {item.id.includes('1') && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                    Bestseller
                   </span>
+                )}
+              </div>
+
+              {/* CONTENT - Premium Typography */}
+              <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col gap-4">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tighter leading-none mb-2">
+                    {item.nameTranslations[language]}
+                  </h3>
+                  <p className="text-white/60 text-sm font-medium line-clamp-2 leading-relaxed max-w-[85%] group-hover:text-white/80 transition-colors">
+                    {item.descriptionTranslations[language]}
+                  </p>
                 </div>
-              )}
-              {(item.id === 'w4' || item.id === 'r4' || item.id === 'w8') && (
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/90 text-white backdrop-blur-sm">
-                    🥬 {language === 'pl' ? 'Wege' : language === 'ru' ? 'Веган' : language === 'uk' ? 'Веган' : 'Veggie'}
-                  </span>
-                </div>
-              )}
 
-              {/* OVERLAY GRADIENT */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-70 group-hover:opacity-80 transition-opacity duration-300" />
-
-              {/* CONTENT - Overlay on image */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex flex-col gap-1.5 sm:gap-2">
-                <h3 className="text-white text-base sm:text-lg font-semibold leading-tight">
-                  {item.nameTranslations[language]}
-                </h3>
-
-                <p className="text-neutral-200 text-xs sm:text-sm leading-snug line-clamp-2">
-                  {item.descriptionTranslations[language]}
-                </p>
-
-                <div className="flex items-center justify-between pt-1 sm:pt-2">
-                  <div className="text-white text-lg sm:text-xl font-bold">
-                    {item.price} zł
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex flex-col">
+                    <span className="text-white/40 text-[10px] font-black uppercase tracking-tighter">Price</span>
+                    <span className="text-2xl font-black text-white tracking-tighter">
+                      {item.price} <span className="text-sm font-medium text-white/60 ml-px">PLN</span>
+                    </span>
                   </div>
 
-                  <div className="relative group/button">
-                    <button
-                      onClick={() => {
-                        addItem({
-                          id: item.id,
-                          name: item.nameTranslations,
-                          price: item.price,
-                          image: item.image,
-                        });
-                        toast.success(
-                          language === "pl"
-                            ? "Dodano do koszyka"
-                            : language === "ru"
-                            ? "Добавлено в корзину"
-                            : language === "uk"
-                            ? "Додано до кошика"
-                            : "Added to cart",
-                          {
-                            duration: 2000,
-                          }
-                        );
-                      }}
-                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 bg-white text-black hover:bg-neutral-100 shadow-lg"
-                      aria-label={t.addToCart}
-                    >
-                      <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </button>
-                    
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-black text-white text-xs font-medium rounded-lg opacity-0 group-hover/button:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
-                      {t.addToCart}
-                      <div className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-black"></div>
-                    </div>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addItem({
+                        id: item.id,
+                        name: item.nameTranslations,
+                        price: item.price,
+                        image: item.image,
+                      });
+                      toast.success(
+                        language === "pl"
+                          ? "Dodano do koszyka"
+                          : language === "ru"
+                          ? "Добавлено в корзину"
+                          : language === "uk"
+                          ? "Додано до кошика"
+                          : "Added to cart",
+                        {
+                          duration: 2000,
+                          className: "rounded-2xl font-bold",
+                        }
+                      );
+                    }}
+                    className="w-14 h-14 rounded-3xl bg-primary text-primary-foreground flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90 shadow-xl shadow-primary/10 group-hover:shadow-primary/30"
+                    aria-label={t.addToCart}
+                  >
+                    <Plus className="w-6 h-6 stroke-[3]" />
+                  </button>
                 </div>
               </div>
             </Card>

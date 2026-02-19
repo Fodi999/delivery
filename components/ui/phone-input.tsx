@@ -32,24 +32,22 @@ export function PhoneInput({
   required = false,
 }: PhoneInputProps) {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Just pass the raw value to the formatter, it handles non-digits
     const formatted = formatPolishPhone(e.target.value);
-    onChange(formatted);
+    // Limit to 11 chars (9 digits + 2 spaces)
+    if (formatted.length <= 11) {
+      onChange(formatted);
+    }
   };
 
   const placeholder = "___ ___ ___";
 
   return (
-    <div>
-      <div className="flex gap-2">
+    <div className="w-full">
+      <div className="flex items-center gap-0 w-full px-4">
         {/* Фиксированный код +48 (Польша) */}
-        <div
-          className={`px-3 py-2 rounded-md border w-20 font-mono flex items-center justify-center ${
-            isDark
-              ? "bg-neutral-800 border-neutral-700 text-neutral-400"
-              : "bg-neutral-100 border-neutral-300 text-neutral-600"
-          }`}
-        >
-          +48
+        <div className="flex items-center gap-2 pr-4 border-r border-white/10 dark:border-white/20">
+          <span className="text-xl font-black text-foreground dark:text-white opacity-60">+48</span>
         </div>
 
         {/* Input для номера */}
@@ -59,36 +57,11 @@ export function PhoneInput({
           value={value}
           onChange={handlePhoneChange}
           required={required}
-          className={`flex-1 ${isDark ? "bg-neutral-800 border-neutral-700" : ""} ${
-            error ? "border-red-500" : ""
+          className={`flex-1 h-16 border-none bg-transparent shadow-none focus-visible:ring-0 text-2xl font-black tracking-[0.1em] placeholder:text-foreground/30 dark:placeholder:text-white/20 transition-none ${
+            isDark ? "text-white" : "text-foreground"
           }`}
         />
       </div>
-
-      {/* Error message */}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-
-      {/* Helper text */}
-      {!error && helperText && (
-        <p
-          className={`text-xs mt-1 ${
-            isDark ? "text-neutral-500" : "text-neutral-500"
-          }`}
-        >
-          {helperText}
-        </p>
-      )}
-
-      {/* Format hint (если нет error и helper) */}
-      {!error && !helperText && value && (
-        <p
-          className={`text-xs mt-1 ${
-            isDark ? "text-neutral-500" : "text-neutral-500"
-          }`}
-        >
-          Format: +48 {placeholder}
-        </p>
-      )}
     </div>
   );
 }

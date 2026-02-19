@@ -9,12 +9,14 @@ interface MapboxDeliveryMapProps {
   onLocationSelect?: (location: { lat: number; lng: number }) => void;
   onDistanceCalculated?: (distance: number, duration: number) => void;
   externalLocation?: { lat: number; lng: number } | null;
+  autoStartCourier?: boolean;
 }
 
 export function MapboxDeliveryMap({
   onLocationSelect,
   onDistanceCalculated,
   externalLocation,
+  autoStartCourier = false,
 }: MapboxDeliveryMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -25,6 +27,7 @@ export function MapboxDeliveryMap({
   const initializingRef = useRef(false); // Флаг для предотвращения двойной инициализации
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]); // Координаты маршрута
   const [isAnimating, setIsAnimating] = useState(false); // Флаг анимации
+  const [isDelivered, setIsDelivered] = useState(false); // Флаг завершения доставки
   const animationFrameRef = useRef<number | null>(null); // ID анимации
   
   // Refs для колбэков чтобы избежать бесконечного цикла
@@ -69,8 +72,6 @@ export function MapboxDeliveryMap({
     // Check container dimensions
     const containerHeight = mapContainerRef.current.clientHeight;
     const containerWidth = mapContainerRef.current.clientWidth;
-    console.log('🗺️ Initializing Mapbox');
-    console.log('📐 Container dimensions:', { width: containerWidth, height: containerHeight });
 
     if (containerHeight === 0 || containerWidth === 0) {
       console.error('❌ Container has zero dimensions! Check parent CSS.');
@@ -80,7 +81,7 @@ export function MapboxDeliveryMap({
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/dark-v11', // Stable premium dark style to avoid incidents 404s
       center: [RESTAURANT_LOCATION.lng, RESTAURANT_LOCATION.lat],
       zoom: 12,
       // UX для доставки - минимум взаимодействия
@@ -89,44 +90,59 @@ export function MapboxDeliveryMap({
       dragRotate: false,
       pitchWithRotate: false,
       touchZoomRotate: false,
+      antialias: true // For smoother lines
     });
 
-    // Add navigation controls
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    // Add navigation controls (minimal)
+    const nav = new mapboxgl.NavigationControl({ showCompass: false });
+    map.addControl(nav, 'top-right');
 
     // Wait for map to load before adding markers
     map.on('load', () => {
       setMapLoaded(true);
       
-      // 🏪 Кастомный маркер ресторана с SVG иконкой
+      // 🏪 Кастомный маркер ресторана Bolt-style (очень чистый)
       const restaurantEl = document.createElement('div');
       restaurantEl.className = 'restaurant-marker';
-      restaurantEl.style.width = '40px';
-      restaurantEl.style.height = '40px';
-      restaurantEl.style.borderRadius = '50%';
-      restaurantEl.style.backgroundColor = '#22c55e'; // Зелёный бренд доставки
-      restaurantEl.style.border = '3px solid white';
-      restaurantEl.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.4)';
+      restaurantEl.style.width = '48px';
+      restaurantEl.style.height = '48px';
+      restaurantEl.style.borderRadius = '20px'; // Rounded square
+      restaurantEl.style.backgroundColor = '#000'; // Black background
+      restaurantEl.style.border = '2px solid rgba(255,255,255,0.2)';
+      restaurantEl.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
       restaurantEl.style.cursor = 'pointer';
       restaurantEl.style.display = 'flex';
       restaurantEl.style.alignItems = 'center';
       restaurantEl.style.justifyContent = 'center';
+      restaurantEl.style.transition = 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)';
       
-      // SVG иконка ресторана/магазина
+      // SVG иконка ресторана
       restaurantEl.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
       `;
-      restaurantEl.style.fontSize = '20px';
+
+      restaurantEl.addEventListener('mouseenter', () => {
+        restaurantEl.style.transform = 'scale(1.1) translateY(-2px)';
+        restaurantEl.style.borderColor = '#22c55e';
+      });
+      restaurantEl.addEventListener('mouseleave', () => {
+        restaurantEl.style.transform = 'scale(1) translateY(0)';
+        restaurantEl.style.borderColor = 'rgba(255,255,255,0.2)';
+      });
 
       const restaurantMarker = new mapboxgl.Marker({ element: restaurantEl })
         .setLngLat([RESTAURANT_LOCATION.lng, RESTAURANT_LOCATION.lat])
         .setPopup(
-          new mapboxgl.Popup({ offset: 25 }).setHTML(
-            '<h3 style="margin:0;font-weight:bold;">Суши • Вок • Рамен</h3>'
-          )
+          new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`
+            <div style="padding:10px;text-align:center;color:#000;">
+              <span style="font-size:24px;display:block;">🍱</span>
+              <strong style="font-size:12px;display:block;margin-top:4px;">РЕСТОРАН 🍣</strong>
+              <div style="font-size:10px;opacity:0.5;">Готовим для вас с любовью</div>
+            </div>
+          `)
         )
         .addTo(map);
 
@@ -161,49 +177,74 @@ export function MapboxDeliveryMap({
       customerMarkerRef.current.remove();
     }
 
-    // 🏠 Кастомный маркер клиента с пульсацией
+    // 🏠 Кастомный маркер клиента Bolt-style (чистый белый на синем фоне)
     const customerEl = document.createElement('div');
     customerEl.className = 'customer-marker';
     customerEl.style.position = 'relative';
-    customerEl.style.width = '32px';
-    customerEl.style.height = '32px';
+    customerEl.style.width = '40px';
+    customerEl.style.height = '40px';
+    customerEl.style.display = 'flex';
+    customerEl.style.alignItems = 'center';
+    customerEl.style.justifyContent = 'center';
     
-    // Пульсирующий круг (внешний)
+    // Пульсирующий круг (внешний) - плавное свечение 2026
     const pulse = document.createElement('div');
     pulse.style.position = 'absolute';
     pulse.style.width = '100%';
     pulse.style.height = '100%';
     pulse.style.borderRadius = '50%';
-    pulse.style.backgroundColor = 'rgba(59, 130, 246, 0.4)';
-    pulse.style.animation = 'pulse 2s infinite';
+    pulse.style.background = 'radial-gradient(circle, rgba(59, 130, 246, 0.6) 0%, rgba(59, 130, 246, 0) 70%)';
+    pulse.style.animation = 'pulse-2026 3s ease-out infinite';
     
-    // Основной круг (внутренний)
+    // Основной круг (внутренний) - 3D эффект как в Bolt
     const core = document.createElement('div');
-    core.style.position = 'absolute';
-    core.style.width = '100%';
-    core.style.height = '100%';
+    core.style.position = 'relative';
+    core.style.width = '32px';
+    core.style.height = '32px';
     core.style.borderRadius = '50%';
     core.style.backgroundColor = '#3b82f6';
     core.style.border = '3px solid white';
-    core.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
+    core.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.4)';
     core.style.display = 'flex';
     core.style.alignItems = 'center';
     core.style.justifyContent = 'center';
+    core.style.transition = 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)';
     
     // SVG иконка локации/пина
     core.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-        <circle cx="12" cy="10" r="3" fill="#3b82f6" stroke="white"></circle>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
       </svg>
     `;
     
     customerEl.appendChild(pulse);
     customerEl.appendChild(core);
 
-    const customerMarker = new mapboxgl.Marker({ element: customerEl, draggable: true })
+    customerEl.addEventListener('mouseenter', () => {
+      core.style.transform = 'scale(1.2) translateY(-4px)';
+      core.style.backgroundColor = '#2563eb';
+    });
+    customerEl.addEventListener('mouseleave', () => {
+      core.style.transform = 'scale(1) translateY(0)';
+      core.style.backgroundColor = '#3b82f6';
+    });
+
+    const customerMarker = new mapboxgl.Marker({ 
+      element: customerEl, 
+      draggable: true,
+      anchor: 'center'
+    })
       .setLngLat([customerLocation.lng, customerLocation.lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<p>Адрес доставки</p>'))
+      .setPopup(
+        new mapboxgl.Popup({ offset: 25, closeButton: false })
+          .setHTML(`
+            <div style="padding:10px;text-align:center;color:#000;">
+              <span style="font-size:24px;display:block;">🏠</span>
+              <strong style="font-size:12px;display:block;margin-top:4px;">ВАШ АДРЕС 📍</strong>
+              <div style="font-size:10px;opacity:0.5;">Перетащите для точности</div>
+            </div>
+          `)
+      )
       .addTo(map);
 
     customerMarkerRef.current = customerMarker;
@@ -235,15 +276,20 @@ export function MapboxDeliveryMap({
         const map = mapRef.current;
         if (!map) return;
 
-        // Remove old route layer
+        // Remove old route layers in correct order
         if (map.getLayer('route')) {
           map.removeLayer('route');
         }
+        if (map.getLayer('route-glow')) {
+          map.removeLayer('route-glow');
+        }
+        
+        // Now it's safe to remove the source
         if (map.getSource('route')) {
           map.removeSource('route');
         }
 
-        // Add new route layer (скрытая, пока не нажата кнопка)
+        // Create sources for route
         map.addSource('route', {
           type: 'geojson',
           data: {
@@ -253,17 +299,29 @@ export function MapboxDeliveryMap({
           },
         });
 
+        // 🌟 BOLT GLOW EFFECT (Wide line, low opacity)
+        map.addLayer({
+          id: 'route-glow',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#22c55e',
+            'line-width': 12,
+            'line-opacity': 0.15,
+            'line-blur': 3,
+          },
+        });
+
+        // 🟢 MAIN BOLT ROUTE
         map.addLayer({
           id: 'route',
           type: 'line',
           source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
-            'line-color': '#22c55e', // Зелёный бренд доставки
-            'line-width': 5,
+            'line-color': '#22c55e',
+            'line-width': 4.5,
             'line-opacity': 0.9,
           },
         });
@@ -317,13 +375,18 @@ export function MapboxDeliveryMap({
         courierMarkerRef.current.remove();
       }
 
-      // Удаляем старую линию маршрута (будем рисовать новую динамически)
-      if (map.getLayer('route')) {
-        map.removeLayer('route');
-      }
-      if (map.getSource('route')) {
-        map.removeSource('route');
-      }
+      // Сначала очищаем ВСЕ старые анимированные слои и источники перед созданием новых
+      if (map.getLayer('animated-route')) map.removeLayer('animated-route');
+      if (map.getLayer('animated-route-glow')) map.removeLayer('animated-route-glow');
+      if (map.getSource('animated-route')) map.removeSource('animated-route');
+      
+      if (map.getLayer('remaining-route')) map.removeLayer('remaining-route');
+      if (map.getSource('remaining-route')) map.removeSource('remaining-route');
+
+      // Удаляем старую статичную линию маршрута
+      if (map.getLayer('route')) map.removeLayer('route');
+      if (map.getLayer('route-glow')) map.removeLayer('route-glow');
+      if (map.getSource('route')) map.removeSource('route');
 
       // Создаём source для анимированной линии (изначально пустая)
       map.addSource('animated-route', {
@@ -338,23 +401,34 @@ export function MapboxDeliveryMap({
         }
       });
 
-      // Добавляем слой для анимированной линии (яркая зелёная)
+      // 🌟 BOLT GLOW EFFECT (ANIMATED)
+      map.addLayer({
+        id: 'animated-route-glow',
+        type: 'line',
+        source: 'animated-route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#22c55e',
+          'line-width': 12,
+          'line-opacity': 0.15,
+          'line-blur': 4,
+        },
+      });
+
+      // 🟢 MAIN ENHANCED LINE (Bolt Primary Green)
       map.addLayer({
         id: 'animated-route',
         type: 'line',
         source: 'animated-route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round',
-        },
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#10b981', // Яркий зелёный
-          'line-width': 6,
+          'line-color': '#22c55e',
+          'line-width': 5,
           'line-opacity': 1,
         },
       });
 
-      // Добавляем пунктирную линию впереди курьера (серая)
+      // Добавляем оставшийся путь (серая линия)
       map.addSource('remaining-route', {
         type: 'geojson',
         data: {
@@ -371,50 +445,42 @@ export function MapboxDeliveryMap({
         id: 'remaining-route',
         type: 'line',
         source: 'remaining-route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round',
-        },
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#6b7280', // Серая
-          'line-width': 4,
-          'line-opacity': 0.5,
-          'line-dasharray': [2, 2], // Пунктир
+          'line-color': 'rgba(255,255,255,0.08)',
+          'line-width': 3,
+          'line-dasharray': [1, 2],
         },
       });
 
-      // 🛵 Создаём маркер курьера
+      // 🛵 BOLT COURIER MARKER (Scooter/Car High Quality SVG)
       const courierEl = document.createElement('div');
-      courierEl.style.width = '48px';
-      courierEl.style.height = '48px';
+      courierEl.style.width = '56px';
+      courierEl.style.height = '56px';
       courierEl.style.display = 'flex';
       courierEl.style.alignItems = 'center';
       courierEl.style.justifyContent = 'center';
-      courierEl.style.transition = 'all 0.3s ease';
+      courierEl.style.filter = 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))';
+      courierEl.style.transition = 'transform 0.1s linear';
       
       courierEl.innerHTML = `
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <ellipse cx="24" cy="42" rx="12" ry="3" fill="rgba(0,0,0,0.2)"/>
-          <circle cx="24" cy="24" r="18" fill="#22c55e"/>
-          <circle cx="24" cy="24" r="18" fill="url(#greenGradient)"/>
-          <circle cx="24" cy="24" r="18" stroke="white" stroke-width="3" fill="none"/>
-          <g transform="translate(24, 24)">
-            <circle cx="-6" cy="4" r="3" fill="white" stroke="white" stroke-width="1.5"/>
-            <circle cx="6" cy="4" r="3" fill="white" stroke="white" stroke-width="1.5"/>
-            <path d="M -6 4 L -3 0 L 3 0 L 6 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="0" cy="-4" r="2.5" fill="white"/>
-            <rect x="-2" y="-1" width="4" height="3" fill="white" rx="1"/>
-          </g>
-          <defs>
-            <radialGradient id="greenGradient">
-              <stop offset="0%" stop-color="#22c55e"/>
-              <stop offset="100%" stop-color="#16a34a"/>
-            </radialGradient>
-          </defs>
-          <circle cx="24" cy="24" r="20" fill="none" stroke="#22c55e" stroke-width="2" opacity="0.4">
-            <animate attributeName="r" from="18" to="26" dur="1.5s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/>
+        <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+          <!-- Main Body -->
+          <circle cx="32" cy="32" r="26" fill="black" stroke="#22c55e" stroke-width="2"/>
+          
+          <!-- Animated Ring -->
+          <circle cx="32" cy="32" r="30" stroke="#22c55e" stroke-width="2" opacity="0.4">
+            <animate attributeName="r" from="28" to="34" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" from="0.3" to="0" dur="2s" repeatCount="indefinite"/>
           </circle>
+
+          <!-- Vehicle Icon (Scooter approach) -->
+          <g transform="translate(18, 18) scale(1.2)">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity="0.1"/>
+            <path d="M8 17L5 20M16 17L19 20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <rect x="7" y="5" width="10" height="12" rx="2" fill="white" stroke="#22c55e" stroke-width="1.5"/>
+            <circle cx="12" cy="11" r="3" fill="#22c55e"/>
+          </g>
         </svg>
       `;
 
@@ -427,6 +493,7 @@ export function MapboxDeliveryMap({
 
       courierMarkerRef.current = courierMarker;
       setIsAnimating(true);
+      setIsDelivered(false); // Сбрасываем флаг при новом запуске
 
       let currentIndex = 0;
       const totalPoints = routeCoordinates.length;
@@ -439,12 +506,31 @@ export function MapboxDeliveryMap({
       const animate = () => {
         if (currentIndex >= totalPoints - 1) {
           setIsAnimating(false);
+          setIsDelivered(true); // Указываем, что доставлено
+          
+          // Эффект прибытия: меняем иконку курьера на подарок или чек
+          courierEl.innerHTML = `
+            <div style="width:56px;height:56px;display:flex;items-center;justify-content:center;background:white;border-radius:50%;box-shadow:0 10px 20px rgba(0,0,0,0.3);border:2px solid #22c55e;font-size:28px;padding-top:2px;">
+              🎁
+            </div>
+          `;
+          
           courierEl.style.transform = 'scale(1.3)';
           setTimeout(() => {
             courierEl.style.transform = 'scale(1)';
             courierMarker.setPopup(
-              new mapboxgl.Popup({ offset: 25, closeButton: false })
-                .setHTML('<div style="text-align:center;padding:8px;"><strong>🎉 Доставлено!</strong><br/>Приятного аппетита</div>')
+              new mapboxgl.Popup({ 
+                offset: 25, 
+                closeButton: false,
+                className: 'custom-delivered-popup' // Дополнительная кастомизация если нужно
+              })
+                .setHTML(`
+                  <div style="text-align:center;padding:12px;color:#000;font-family:sans-serif;">
+                    <span style="font-size:32px;display:block;margin-bottom:8px;">🎁</span>
+                    <strong style="font-size:16px;display:block;">Доставлено! 🍟</strong>
+                    <div style="font-size:12px;opacity:0.6;margin-top:4px;">Приятного аппетита! 😋</div>
+                  </div>
+                `)
             ).togglePopup();
           }, 300);
           return;
@@ -519,6 +605,17 @@ export function MapboxDeliveryMap({
     }, 2000); // Ждём 2 секунды после показа адреса клиента
   };
 
+  // ✅ AUTOSTART COURIER ANIMATION (2026 Bolt-style UX)
+  useEffect(() => {
+    if (autoStartCourier && routeCoordinates.length > 0 && !isAnimating && !isDelivered) {
+      console.log('🚀 Autostarting courier animation...');
+      const timer = setTimeout(() => {
+        animateCourier();
+      }, 1000); // Небольшая задержка после получения маршрута
+      return () => clearTimeout(timer);
+    }
+  }, [autoStartCourier, routeCoordinates, isAnimating, isDelivered]);
+
   // Останавливаем анимацию при размонтировании
   useEffect(() => {
     return () => {
@@ -529,9 +626,13 @@ export function MapboxDeliveryMap({
       const map = mapRef.current;
       if (map) {
         if (map.getLayer('animated-route')) map.removeLayer('animated-route');
+        if (map.getLayer('animated-route-glow')) map.removeLayer('animated-route-glow');
         if (map.getSource('animated-route')) map.removeSource('animated-route');
         if (map.getLayer('remaining-route')) map.removeLayer('remaining-route');
         if (map.getSource('remaining-route')) map.removeSource('remaining-route');
+        if (map.getLayer('route-glow')) map.removeLayer('route-glow');
+        if (map.getLayer('route')) map.removeLayer('route');
+        if (map.getSource('route')) map.removeSource('route');
       }
     };
   }, []);
@@ -543,27 +644,38 @@ export function MapboxDeliveryMap({
         className="w-full h-full rounded-2xl overflow-hidden"
       />
       
-      {/* Кнопка запуска анимации */}
+      {/* Кнопка запуска анимации - Premium 2026 Bolt Style */}
       {routeCoordinates.length > 0 && !isAnimating && (
         <button
           onClick={animateCourier}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[#22c55e] hover:bg-[#1ea350] text-white font-black uppercase tracking-widest text-[10px] px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 transition-all transform active:scale-95 hover:scale-105 border-b-4 border-black/20 group"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-          Показать доставку
+          <span className="text-xl group-hover:animate-bounce-short">🛵</span>
+          {isDelivered ? 'Запустить еще раз 🔁' : 'Показать доставку 💨'}
         </button>
       )}
 
-      {/* Индикатор анимации */}
+      {/* Индикатор анимации - Clean Blur Style */}
       {isAnimating && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-green-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
-          <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
-            <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
-          </svg>
-          Курьер в пути...
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 glass px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border border-white/20 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="text-xl">🛵</div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Статус</span>
+            <span className="text-xs font-black uppercase tracking-widest leading-tight">Курьер в пути... 💨</span>
+          </div>
+          <div className="w-1.5 h-1.5 bg-[#22c55e] rounded-full animate-pulse ml-2" />
+        </div>
+      )}
+
+      {/* Индикатор завершения - DARK TEXT STYLE (как просил пользователь) */}
+      {isDelivered && !isAnimating && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-xl px-10 py-5 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-4 border border-black/5 animate-in zoom-in-95 duration-700">
+          <div className="text-2xl">📦</div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40">Доставлено</span>
+            <span className="text-sm font-black uppercase tracking-widest text-black leading-tight">Заказ на месте! 🏡😋</span>
+          </div>
+          <div className="w-2 h-2 bg-[#22c55e] rounded-full shadow-[0_0_10px_rgba(34,197,94,1)]" />
         </div>
       )}
     </div>

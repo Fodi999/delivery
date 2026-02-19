@@ -64,11 +64,7 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
 
   if (!mounted) {
     return (
-      <header className={`hidden md:block sticky top-0 z-50 backdrop-blur-xl border-b ${
-        isDark ? 'bg-black/70 border-neutral-800' : 'bg-white/70 border-neutral-200'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 py-3 sm:py-4 h-[60px] sm:h-[64px]" />
-      </header>
+      <header className="hidden md:block sticky top-0 z-50 glass border-b border-white/5 h-[64px]" />
     );
   }
 
@@ -76,13 +72,10 @@ export function Header({ showBackButton = false, title, subtitle }: HeaderProps)
   const isLandingPage = pathname === "/";
 
   return (
-    <header className={`hidden md:block sticky top-0 z-50 backdrop-blur-xl border-b transition-colors ${
-      isDark 
-        ? 'bg-black/70 border-neutral-800' 
-        : 'bg-white/70 border-neutral-200'
-    }`}>
+    <header className="hidden md:block sticky top-0 z-50 glass border-b border-white/5 transition-all duration-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 py-3 sm:py-4">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">{/* Left section */}
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
+          {/* Left section */}
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             {showBackButton && (
               <Button

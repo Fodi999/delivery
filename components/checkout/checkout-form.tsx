@@ -25,7 +25,7 @@ import { AIRecommendationCard, AISuggestions } from "./ai/AIRecommendations";
 import { DeliveryMapSection } from "./delivery/DeliveryMapSection";
 
 export function CheckoutForm() {
-  const { isDark, language, city } = useApp();
+  const { language, isDark, city } = useApp();
   const clear = useCartStore((s) => s.clear);
   const addItem = useCartStore((s) => s.addItem);
   const total = useCartStore((s) => s.total());
@@ -41,16 +41,44 @@ export function CheckoutForm() {
     numberOfPeople: 1, // Количество персон
   });
 
+  // 🔥 Helper to add items from names (used in AI suggestions)
+  const handleAddToCart = (dishName: string) => {
+    // Find item by name in current language or any translation
+    const itemToAdd = menuItems.find(item => 
+      Object.values(item.nameTranslations).some(n => n.toLowerCase() === dishName.toLowerCase())
+    );
+
+    if (itemToAdd) {
+      addItem({
+        id: itemToAdd.id,
+        name: itemToAdd.nameTranslations,
+        price: itemToAdd.price,
+        image: itemToAdd.image,
+      });
+      toast.success(language === 'ru' ? `Добавлено: ${dishName}` : `Added: ${dishName}`);
+    }
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCalculation | null>(
     null
   );
+  
+  // 🔥 Recalculate delivery if total changes (e.g. new AI items added)
+  useEffect(() => {
+    if (deliveryInfo?.distance && deliveryInfo?.duration) {
+      const updated = calculateDeliveryPrice(deliveryInfo.distance, total, deliveryInfo.duration);
+      setDeliveryInfo(updated);
+    }
+  }, [total]);
+
   const [mapLocation, setMapLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
+  const [autoStartCourier, setAutoStartCourier] = useState(false);
 
   // 🤖 AI-генерированное приветствие
   const [aiWelcomeMessage, setAiWelcomeMessage] = useState<string>("");
@@ -217,7 +245,6 @@ export function CheckoutForm() {
 
           if (response.ok) {
             const { recommendation, isEnough } = await response.json();
-            console.log("🍱 AI food recommendation:", recommendation, "isEnough:", isEnough);
             setAiRecommendation(recommendation);
             
             // 🎯 Генерируем умные предложения на основе рекомендации
@@ -256,7 +283,6 @@ export function CheckoutForm() {
 
       if (response.ok) {
         const { suggestions } = await response.json();
-        console.log("🎯 AI suggestions:", suggestions);
         setAiSuggestions(suggestions);
       }
     } catch (error) {
@@ -474,6 +500,10 @@ export function CheckoutForm() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          
+          // 📍 СРАЗУ обновляем карту, чтобы она полетела в нужную точку
+          setMapLocation({ lat: latitude, lng: longitude });
+          setAutoStartCourier(true); // 🛵 Запускаем курьера автоматически!
 
           try {
             // Reverse geocoding через Nominatim (OpenStreetMap)
@@ -495,7 +525,7 @@ export function CheckoutForm() {
 
             const fullAddress = `${street} ${houseNumber}, ${city}`.trim();
 
-            setFormData({ ...formData, address: fullAddress });
+            setFormData(prev => ({ ...prev, address: fullAddress }));
 
             toast.success(
               language === "pl"
@@ -711,317 +741,199 @@ export function CheckoutForm() {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`rounded-xl p-6 ${
-        isDark ? "bg-neutral-900" : "bg-neutral-50"
-      }`}
-    >
-      <h2 className="text-xl font-bold mb-6">{t.checkout.deliveryDetails}</h2>
-
-      {/* 🤖 AI Badge постоянного клиента */}
-      {customerData && customerData.isReturning && (
-        <div
-          className={`flex items-center gap-3 mb-4 p-4 rounded-xl border-2 transition-all duration-300 ${
-            isDark
-              ? "bg-gradient-to-br from-purple-950/60 via-pink-950/40 to-indigo-950/60 border-purple-700/50 shadow-lg shadow-purple-900/20"
-              : "bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 border-purple-300/50 shadow-lg shadow-purple-200/30"
-          }`}
-        >
-          <div className="relative">
-            <span className="text-3xl animate-pulse">🤖</span>
-            {isGeneratingAI && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping" />
-            )}
-          </div>
-          
-          <div className="flex-1">
-            {/* AI-генерированное приветствие */}
-            <div className={`font-bold text-base mb-1 ${isDark ? "text-purple-100" : "text-purple-900"}`}>
-              {isGeneratingAI ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-t-transparent border-purple-400 rounded-full animate-spin" />
-                  {language === "pl" ? "Generowanie..." : language === "ru" ? "Генерация..." : language === "uk" ? "Генерація..." : "Generating..."}
-                </span>
-              ) : aiWelcomeMessage ? (
-                aiWelcomeMessage
-              ) : (
-                language === "pl"
-                  ? "Stały klient!"
-                  : language === "ru"
-                  ? "Постоянный клиент!"
-                  : language === "uk"
-                  ? "Постійний клієнт!"
-                  : "Returning customer!"
-              )}
-            </div>
-            
-            {/* Статистика или AI описание */}
-            <div className={`text-sm ${isDark ? "text-purple-300/90" : "text-purple-700/90"}`}>
-              {aiDescription ? (
-                <span className="italic">"{aiDescription}"</span>
-              ) : (
-                <>
-                  {(() => {
-                    const count = customerData.totalOrders || 0;
-                    let orderText = "";
-                    
-                    if (language === "pl") {
-                      if (count === 1) orderText = "1 zamówienie";
-                      else if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
-                        orderText = `${count} zamówienia`;
-                      } else {
-                        orderText = `${count} zamówień`;
-                      }
-                    } else if (language === "ru") {
-                      if (count === 1) orderText = "1 заказ";
-                      else if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
-                        orderText = `${count} заказа`;
-                      } else {
-                        orderText = `${count} заказов`;
-                      }
-                    } else if (language === "uk") {
-                      if (count === 1) orderText = "1 замовлення";
-                      else if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
-                        orderText = `${count} замовлення`;
-                      } else {
-                        orderText = `${count} замовлень`;
-                      }
-                    } else {
-                      orderText = count === 1 ? "1 order" : `${count} orders`;
-                    }
-                    
-                    return orderText;
-                  })()}
-                  {customerData.totalSpent && customerData.totalSpent > 0 && ` • ${formatPrice(customerData.totalSpent)}`}
-                </>
-              )}
-            </div>
-          </div>
-          
-          {/* Индикатор загрузки или иконка успеха */}
-          <div className="flex items-center">
-            {isGeneratingAI ? (
-              <span className="w-6 h-6 border-2 border-t-transparent border-purple-400 rounded-full animate-spin" />
-            ) : aiWelcomeMessage ? (
-              <span className="text-2xl">✨</span>
-            ) : loadingCustomer ? (
-              <span className="w-6 h-6 border-2 border-t-transparent border-purple-400 rounded-full animate-spin" />
-            ) : (
-              <span className="text-2xl">⭐</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Security badge */}
-      <div
-        className={`flex items-center gap-2 mb-4 text-sm ${
-          isDark ? "text-neutral-400" : "text-neutral-600"
-        }`}
-      >
-        <span>🔒</span>
-        <span>
-          {language === "pl"
-            ? "Bez rejestracji • Płatność przy odbiorze"
-            : language === "ru"
-            ? "Без регистрации • Оплата при получении"
-            : language === "uk"
-            ? "Без реєстрації • Оплата при отриманні"
-            : "No registration • Cash on delivery"}
-        </span>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <Input
-            placeholder={t.checkout.name}
-            value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
-            required
-            className={isDark ? "bg-neutral-800 border-neutral-700" : ""}
-          />
+    <div className="space-y-16">
+      {/* 🤖 01. GROUP: CUSTOMER PROFILE & PARTY SIZE */}
+      <section className="space-y-8">
+        <div className="flex items-center gap-4 ml-6 pb-2">
+          <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" />
+          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
+            01. Personal Profile
+          </h2>
         </div>
 
-        <div>
-          <PhoneInput
-            value={formData.phone}
-            onChange={(value) => {
-              setFormData({ ...formData, phone: value });
-              setPhoneError("");
+        <div className="bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl rounded-[3rem] p-1 border border-black/10 dark:border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="p-8 sm:p-10 space-y-10">
+            {/* Person Selector - Integrated at top */}
+            <div className="pb-8 border-b border-black/10 dark:border-white/10">
+              <PersonSelector
+                numberOfPeople={formData.numberOfPeople}
+                onChange={(val) => setFormData({ ...formData, numberOfPeople: val })}
+                language={language}
+                isDark={isDark}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Имя */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 ml-6 group-focus-within:text-primary transition-colors">
+                  {language === "ru" ? "Ваше Имя" : "Your Name"}
+                </label>
+                <div className="relative">
+                  <Input
+                    placeholder={t.checkout.namePlaceholder}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="h-20 rounded-[2rem] px-8 text-xl font-bold bg-black/5 dark:bg-black/60 border border-black/20 dark:border-white/20 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/50 focus-visible:bg-black/10 dark:focus-visible:bg-black/80 placeholder:text-foreground/20 dark:placeholder:text-white/10 transition-all shadow-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Телефон */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 ml-6 group-focus-within:text-primary transition-colors">
+                  {language === "ru" ? "Номер телефона" : "Phone Number"}
+                </label>
+                <div className="relative">
+                  <div className="h-20 rounded-[2rem] px-1 bg-black/5 dark:bg-black/60 border border-black/20 dark:border-white/20 group-focus-within:border-primary/50 group-focus-within:ring-1 group-focus-within:ring-primary/50 transition-all flex items-center shadow-sm">
+                    <PhoneInput
+                      value={formData.phone}
+                      onChange={(val) => setFormData({ ...formData, phone: val })}
+                      isDark={isDark}
+                    />
+                  </div>
+                </div>
+                {phoneError && (
+                  <p className="text-destructive text-xs font-black uppercase tracking-widest pl-8">
+                    {phoneError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 🚚 02. GROUP: IMMERSIVE MAP & DELIVERY */}
+      <section className="space-y-8">
+        <div className="flex items-center gap-4 ml-6 pb-2">
+          <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
+            02. Delivery Destination
+          </h2>
+        </div>
+
+        <div className="space-y-6">
+          {/* Address Input with Auto-Detect */}
+          <div className="relative group/address">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-transparent rounded-[2.5rem] blur opacity-0 group-focus-within/address:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div className="relative flex items-center bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl rounded-[2.5rem] border border-black/20 dark:border-white/20 shadow-xl overflow-hidden group-focus-within/address:border-blue-500/50 group-focus-within/address:ring-1 group-focus-within/address:ring-blue-500/50 transition-all">
+              <div className="flex-1 flex flex-col px-8 py-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 mb-1">
+                  {language === "ru" ? "Адрес доставки" : "Delivery Address"}
+                </label>
+                <Input
+                  placeholder={language === "ru" ? "Улица, номер дома, город..." : "Street, house number, city..."}
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="h-10 p-0 text-xl font-bold bg-transparent border-none focus-visible:ring-0 shadow-none placeholder:text-foreground/20 dark:placeholder:text-white/10"
+                />
+              </div>
+              
+              <button
+                type="button"
+                onClick={handleUseLocation}
+                disabled={isLoadingLocation}
+                className="h-full px-8 border-l border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-all group/loc flex flex-col items-center justify-center min-w-[120px]"
+              >
+                {isLoadingLocation ? (
+                  <div className="w-6 h-6 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="text-2xl group-hover/loc:scale-110 transition-transform">📍</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest mt-1 text-blue-500">
+                      {language === "ru" ? "ГДЕ Я?" : "AUTO"}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <DeliveryMapSection 
+            mapLocation={mapLocation}
+            onLocationSelect={(location) => {
+              setMapLocation(location);
+              setAutoStartCourier(false); // Стоп авто-анимация если пользователь тащит маркер вручную
             }}
-            error={phoneError}
-            isDark={isDark}
-            required
-          />
-        </div>
-
-        {/* 🍱 Количество персон с AI рекомендацией */}
-        <PersonSelector
-          numberOfPeople={formData.numberOfPeople}
-          onChange={(value) => setFormData({ ...formData, numberOfPeople: value })}
-          language={language}
-          isDark={isDark}
-        />
-          
-        {/* 🤖 AI рекомендация */}
-        {aiRecommendation && (
-          <AIRecommendationCard
-            recommendation={aiRecommendation}
+            onDistanceCalculated={(dist, dur) => {
+              const calc = calculateDeliveryPrice(dist, total, dur);
+              setDeliveryInfo(calc);
+            }}
+            deliveryInfo={deliveryInfo}
             isDark={isDark}
             language={language}
+            autoStartCourier={autoStartCourier}
           />
-        )}
+        </div>
+      </section>      {/* 📝 03. GROUP: SPECIAL REQUESTS & EXTRAS */}
+      <section className="space-y-8">
+        <div className="flex items-center gap-4 ml-6 pb-2">
+          <div className="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.4)]" />
+          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
+            03. Final Details & AI Extras
+          </h2>
+        </div>
 
-        {/* AI предложения блюд */}
-        {aiSuggestions.length > 0 && (
-          <AISuggestions
-            suggestions={aiSuggestions}
-            onAddToCart={handleSuggestionClick}
-            isLoading={isLoadingSuggestions}
-            isDark={isDark}
-          />
-        )}
+        <div className="space-y-8">
+          <div className="relative">
+            <Textarea
+              placeholder={t.checkout.commentPlaceholder}
+              value={formData.comment}
+              onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+              className="min-h-[160px] rounded-[3rem] p-8 text-lg font-bold bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl border border-black/20 dark:border-white/20 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/50 focus-visible:bg-black/5 dark:focus-visible:bg-black/60 transition-all resize-none shadow-xl placeholder:text-foreground/30 dark:placeholder:text-white/40"
+            />
+          </div>
 
-        {/* Адрес доставки */}
-        <div className="space-y-2">
-          <label className={`text-sm font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
-            {language === "pl" ? "Adres dostawy" : 
-             language === "ru" ? "Адрес доставки" : 
-             language === "uk" ? "Адреса доставки" : 
-             "Delivery address"}
-          </label>
-          
-          <div className="flex gap-2">
-            <Input
-              placeholder={language === "pl" ? "ul. Długa 1/2" : 
-                         language === "ru" ? "ул. Длинная 1/2" :
-                         language === "uk" ? "вул. Довга 1/2" :
-                         "Street and number"}
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              required
-              className={isDark ? "bg-neutral-800 border-neutral-700" : ""}
+          {/* ✅ Premium AI Recommendations & Upsell */}
+          <div className="space-y-12">
+            <AIRecommendationCard 
+              recommendation={aiRecommendation}
+              isDark={isDark}
+              language={language}
             />
             
-            <Button
-              type="button"
-              onClick={handleFindAddressOnMap}
-              disabled={isLoadingLocation || !formData.address.trim()}
-              variant="outline"
-              className="whitespace-nowrap"
-            >
-              {isLoadingLocation ? (
-                <span className="animate-spin">⏳</span>
-              ) : (
-                "🗺️"
-              )}{" "}
-              {language === "pl" ? "Znajdź" : 
-               language === "ru" ? "Найти" :
-               language === "uk" ? "Знайти" :
-               "Find"}
-            </Button>
+            <AISuggestions 
+              suggestions={aiSuggestions}
+              onAddToCart={handleAddToCart}
+              isLoading={isLoadingSuggestions}
+              isDark={isDark}
+            />
           </div>
         </div>
+      </section>
 
-        {/* Карта доставки */}
-        <DeliveryMapSection
-          mapLocation={mapLocation}
-          onLocationSelect={handleLocationSelect}
-          onDistanceCalculated={handleDistanceCalculated}
-          deliveryInfo={deliveryInfo}
-          isDark={isDark}
-          language={language}
-        />
-
-        {/* AI помощник доставки */}
-        {aiDeliveryMessage && (
-          <div className={`p-4 rounded-xl border ${
-            isDark 
-              ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-700/30' 
-              : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200'
-          }`}>
-            <div className="flex gap-3 mb-3">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                isDark ? 'bg-blue-500/20' : 'bg-blue-100'
-              }`}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#3b82f6" : "#2563eb"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                </svg>
-              </div>
-              <p className={`text-sm leading-relaxed ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                {aiDeliveryMessage}
-              </p>
-            </div>
-            
-            {aiDeliverySuggestions.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {aiDeliverySuggestions.map((suggestion, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleDeliverySuggestionClick(suggestion)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 ${
-                      isDark
-                        ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
-                        : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-200'
-                    }`}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Комментарий */}
-        <div>
-          <Textarea
-            placeholder={language === "pl" ? "Komentarz do zamówienia (opcjonalnie)" :
-                       language === "ru" ? "Комментарий к заказу (необязательно)" :
-                       language === "uk" ? "Коментар до замовлення (необов'язково)" :
-                       "Order comment (optional)"}
-            value={formData.comment}
-            onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-            className={isDark ? "bg-neutral-800 border-neutral-700" : ""}
-            rows={3}
-          />
-        </div>
-
-        {/* Кнопка оформления */}
+      {/* 🚀 SUBMIT BUTTON */}
+      <div className="pt-12">
         <Button
-          type="submit"
-          disabled={!isFormValid || isSubmitting}
-          className="w-full h-12 text-base font-semibold"
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="w-full h-24 rounded-[3rem] text-2xl font-black tracking-tighter shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all duration-500 bg-primary text-primary-foreground border-b-8 border-black/20 group relative overflow-hidden"
         >
+          {/* Internal Glow Effect */}
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
           {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin">⏳</span>
-              {language === "pl" ? "Przetwarzanie..." :
-               language === "ru" ? "Обработка..." :
-               language === "uk" ? "Обробка..." :
-               "Processing..."}
+            <span className="flex items-center gap-4">
+              <span className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+              {language === 'ru' ? 'Оформляем...' : 'Processing...'}
             </span>
           ) : (
-            <>
-              {language === "pl" ? "Złóż zamówienie" :
-               language === "ru" ? "Оформить заказ" :
-               language === "uk" ? "Оформити замовлення" :
-               "Place order"}
-              {deliveryInfo && deliveryInfo.price && deliveryInfo.price > 0 && (
-                <span className="ml-2 text-sm opacity-80">
-                  ({language === "pl" ? "towary" : language === "ru" ? "товары" : language === "uk" ? "товари" : "items"}: {total} zł + 
-                  {language === "pl" ? " dostawa" : language === "ru" ? " доставка" : language === "uk" ? " доставка" : " delivery"}: {deliveryInfo.price} zł)
-                </span>
-              )}
-            </>
+            <div className="flex items-center justify-between w-full px-12 relative z-10">
+              <span className="flex items-center gap-4">
+                <span className="text-3xl group-hover:scale-125 transition-transform duration-500">🚀</span>
+                {t.checkout.orderButton}
+              </span>
+              <div className="flex flex-col items-end">
+                <span className="text-3xl font-black">{total}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-60 m-0 p-0 leading-none">PLN</span>
+              </div>
+            </div>
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
 

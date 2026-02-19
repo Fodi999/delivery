@@ -10,25 +10,26 @@ export function AIRecommendationCard({ recommendation, isDark, language }: AIRec
   if (!recommendation) return null;
 
   return (
-    <div className={`p-4 rounded-xl border ${
-      isDark 
-        ? 'bg-gradient-to-br from-green-900/20 to-emerald-900/10 border-green-700/30' 
-        : 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
-    }`}>
-      <div className="flex gap-3">
-        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isDark ? 'bg-green-500/20' : 'bg-green-100'
-        }`}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#22c55e" : "#16a34a"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2a10 10 0 0 1 10 10 4 4 0 0 1-4 4h-1.5a2 2 0 0 0-1.5 3.5 10 10 0 1 1-15-8.5"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <circle cx="15.5" cy="8.5" r="1.5"/>
-          </svg>
-        </div>
-        <div className="flex-1">
-          <p className={`text-sm leading-relaxed ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-            {recommendation}
-          </p>
+    <div className="relative group animate-in slide-in-from-bottom-4 duration-1000">
+      {/* 2026 Glow Backdrop */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-green-500/10 rounded-[2rem] blur opacity-30 group-hover:opacity-60 transition duration-1000" />
+      
+      <div className="relative glass-dark p-8 rounded-[2rem] border border-green-500/20 shadow-2xl overflow-hidden">
+        {/* Decorative AI Sparkles */}
+        <div className="absolute -top-4 -right-4 w-24 h-24 bg-green-500/10 blur-2xl rounded-full" />
+        
+        <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+          <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-green-500/20 flex items-center justify-center text-3xl shadow-inner border border-green-500/30">
+            🤖
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-green-400">
+              AI Insight
+            </div>
+            <p className="text-lg font-bold leading-tight tracking-tight text-white/90">
+              "{recommendation}"
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -45,10 +46,9 @@ interface AISuggestionsProps {
 export function AISuggestions({ suggestions, onAddToCart, isLoading, isDark }: AISuggestionsProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-4">
-        <div className={`animate-spin rounded-full h-6 w-6 border-b-2 ${
-          isDark ? 'border-green-400' : 'border-green-600'
-        }`}></div>
+      <div className="flex items-center gap-4 px-8 py-6 rounded-[2rem] glass-dark border border-white/5">
+        <div className="w-5 h-5 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin" />
+        <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Analizujemy Twoje potrzeby...</span>
       </div>
     );
   }
@@ -56,21 +56,26 @@ export function AISuggestions({ suggestions, onAddToCart, isLoading, isDark }: A
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {suggestions.map((suggestion, i) => (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onAddToCart(suggestion)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 ${
-            isDark
-              ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
-              : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-200'
-          }`}
-        >
-          + {suggestion}
-        </button>
-      ))}
+    <div className="space-y-6">
+      <div className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground ml-4">
+        AI Recommended Extras
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {suggestions.map((suggestion, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onAddToCart(suggestion)}
+            className="group relative transition-all duration-300"
+          >
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/50 to-emerald-500/50 rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
+            <div className="relative flex items-center gap-3 px-6 py-3.5 bg-muted/20 hover:bg-muted/40 rounded-full border border-white/5 transition-all group-hover:scale-105 group-hover:-translate-y-1">
+              <span className="text-green-400 font-bold">+</span>
+              <span className="text-sm font-black tracking-tight">{suggestion}</span>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -12,42 +12,41 @@ export function OrderSummary() {
   const t = translations[language];
 
   return (
-    <div
-      className={`rounded-xl p-6 ${
-        isDark ? "bg-neutral-900" : "bg-neutral-50"
-      }`}
-    >
-      <h2 className="text-xl font-bold mb-6">{t.checkout.yourOrder}</h2>
+    <div className="glass rounded-[2.5rem] p-8 sm:p-10 border border-white/5 shadow-2xl overflow-hidden relative">
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -z-10" />
 
-      <div className="space-y-4 mb-6">
+      <h2 className="text-3xl font-black tracking-tighter mb-8 leading-none">
+        {t.checkout.yourOrder}
+      </h2>
+
+      <div className="space-y-6 mb-10 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
         {items.map((item) => (
           <div
             key={item.id}
-            className={`flex gap-3 p-3 rounded-lg ${
-              isDark ? "bg-neutral-800" : "bg-white"
-            }`}
+            className="flex gap-4 group transition-all duration-300"
           >
-            <Image
-              src={item.image}
-              alt={item.name[language]}
-              width={60}
-              height={60}
-              className="rounded-lg object-cover flex-shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-sm line-clamp-1">
-                {item.name[language]}
-              </h4>
-              <div className="flex items-center justify-between mt-1">
-                <span
-                  className={`text-xs ${
-                    isDark ? "text-neutral-400" : "text-neutral-600"
-                  }`}
-                >
-                  {item.quantity} × {item.price} zł
+            <div className="relative w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 shadow-sm border border-white/5">
+              <Image
+                src={item.image}
+                alt={item.name[language]}
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-black text-sm sm:text-base tracking-tight line-clamp-1">
+                  {item.name[language]}
+                </h4>
+                <span className="font-black text-sm tracking-tighter whitespace-nowrap">
+                  {item.price * item.quantity}{" "}
+                  <span className="text-[10px] opacity-60">PLN</span>
                 </span>
-                <span className="font-bold text-sm">
-                  {item.price * item.quantity} zł
+              </div>
+              <div className="flex items-center gap-2 mt-1 opacity-50 text-[10px] font-black uppercase tracking-widest">
+                <span>
+                  {item.quantity} × {item.price} PLN
                 </span>
               </div>
             </div>
@@ -55,46 +54,47 @@ export function OrderSummary() {
         ))}
       </div>
 
-      <div
-        className={`flex justify-between items-center font-bold text-lg border-t pt-4 ${
-          isDark ? "border-neutral-700" : "border-neutral-300"
-        }`}
-      >
-        <span>{t.cart.total}</span>
-        <span className="text-2xl">{total} zł</span>
-      </div>
-
-      {/* Delivery info */}
-      <div
-        className={`mt-6 pt-4 border-t text-sm ${
-          isDark
-            ? "border-neutral-700 text-neutral-400"
-            : "border-neutral-300 text-neutral-600"
-        }`}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <span>🚚</span>
-          <span>
-            {language === "pl"
-              ? "Dostawa 30-45 min"
-              : language === "ru"
-              ? "Доставка 30-45 мин"
-              : language === "uk"
-              ? "Доставка 30-45 хв"
-              : "Delivery 30-45 min"}
+      <div className="pt-8 border-t border-white/10">
+        <div className="flex justify-between items-end mb-1">
+          <span className="text-xs font-black uppercase tracking-[0.2em] opacity-40">
+            {t.cart.total}
+          </span>
+          <span className="text-4xl font-black tracking-tighter">
+            {total}{" "}
+            <span className="text-lg font-medium opacity-60 ml-1">PLN</span>
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span>💳</span>
-          <span>
-            {language === "pl"
-              ? "Płatność gotówką przy odbiorze"
-              : language === "ru"
-              ? "Оплата наличными при получении"
-              : language === "uk"
-              ? "Оплата готівкою при отриманні"
-              : "Cash on delivery"}
-          </span>
+      </div>
+
+      {/* Delivery info - Ultra premium look */}
+      <div className="mt-10 grid grid-cols-1 gap-4">
+        <div className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+            🚚
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-40">
+              Delivery
+            </div>
+            <div className="text-sm font-black tracking-tight">
+              30-45 min
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+            💳
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-40">
+              Payment
+            </div>
+            <div className="text-sm font-black tracking-tight">
+              {language === "ru"
+                ? "При получении"
+                : "On delivery"}
+            </div>
+          </div>
         </div>
       </div>
     </div>

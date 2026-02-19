@@ -13,8 +13,9 @@ interface CartItem {
 }
 
 export async function POST(req: Request) {
+  let body: any;
   try {
-    const body = await req.json();
+    body = await req.json();
     const { numberOfPeople, cartItems, language } = body as {
       numberOfPeople: number;
       cartItems: CartItem[];
@@ -79,31 +80,32 @@ Assess if this is enough food. Reply briefly (max 15 words), friendly tone. If n
     console.error("AI food recommendation error:", error);
     
     // Fallback рекомендация
-    const body = await req.json();
-    const totalPortions = (body.cartItems as CartItem[]).reduce((sum, item) => sum + item.quantity, 0);
-    const numberOfPeople = body.numberOfPeople as number;
-    const language = body.language as "pl" | "ru" | "uk" | "en";
+    const cartItemsFromCatch = (body?.cartItems || []) as CartItem[];
+    const numberOfPeopleFromCatch = (body?.numberOfPeople || 1) as number;
+    const languageFromCatch = (body?.language || "ru") as "pl" | "ru" | "uk" | "en";
+    
+    const totalPortionsFromCatch = cartItemsFromCatch.reduce((sum, item) => sum + item.quantity, 0);
     
     const fallbackMessages = {
-      pl: totalPortions >= numberOfPeople * 1.2 
-        ? "Świetny wybór! To powinna być wystarczająca ilość jedzenia."
-        : `Polecam dodać jeszcze ${Math.ceil(numberOfPeople * 1.5 - totalPortions)} porcje.`,
-      ru: totalPortions >= numberOfPeople * 1.2
-        ? "Отличный выбор! Этого должно хватить."
-        : `Рекомендую добавить ещё ${Math.ceil(numberOfPeople * 1.5 - totalPortions)} порций.`,
-      uk: totalPortions >= numberOfPeople * 1.2
-        ? "Чудовий вибір! Цього має вистачити."
-        : `Рекомендую додати ще ${Math.ceil(numberOfPeople * 1.5 - totalPortions)} порцій.`,
-      en: totalPortions >= numberOfPeople * 1.2
-        ? "Great choice! This should be enough."
-        : `I recommend adding ${Math.ceil(numberOfPeople * 1.5 - totalPortions)} more portions.`,
+      pl: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2 
+        ? "Świetny wybór! To powinna być wystarczająca ilość jedzenia. 🍱"
+        : `Polecam dodać jeszcze ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} porcje. 🥟`,
+      ru: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
+        ? "Отличный выбор! Этого должно хватить. 🍱"
+        : `Рекомендую добавить ещё ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} порций. 🥟`,
+      uk: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
+        ? "Чудовий вибір! Цього має вистачити. 🍱"
+        : `Рекомендую додати ще ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} порцій. 🥟`,
+      en: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
+        ? "Great choice! This should be enough. 🍱"
+        : `I recommend adding ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} more portions. 🥟`,
     };
-    
+
     return NextResponse.json({
-      recommendation: fallbackMessages[language] || fallbackMessages.en,
-      totalPortions,
-      recommendedPortions: numberOfPeople * 1.5,
-      isEnough: totalPortions >= numberOfPeople * 1.2,
+      recommendation: fallbackMessages[languageFromCatch],
+      totalPortions: totalPortionsFromCatch,
+      recommendedPortions: numberOfPeopleFromCatch * 1.5,
+      isEnough: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2,
     });
   }
 }

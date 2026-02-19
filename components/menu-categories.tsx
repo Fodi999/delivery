@@ -40,15 +40,11 @@ export function MenuCategories() {
 
   return (
     <div 
-      className="sticky top-[56px] md:top-[85px] z-40 backdrop-blur-xl border-b transition-colors py-3 md:py-4" 
-      style={{
-        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-        borderColor: isDark ? 'rgb(38, 38, 38)' : 'rgb(229, 229, 229)'
-      }}
+      className="sticky top-[56px] md:top-[85px] z-40 glass border-b border-white/5 transition-all duration-500 py-3 md:py-4"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12">
         {/* Horizontal scrollable tabs */}
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide touch-pan-x -mx-1 px-1">
+        <div className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide touch-pan-x -mx-1 px-1">
           {categories.map((cat) => {
             const active = pathname === `/menu/${cat.key}`;
 
@@ -57,20 +53,17 @@ export function MenuCategories() {
                 key={cat.key}
                 onClick={() => router.push(`/menu/${cat.key}`)}
                 className={cn(
-                  "flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 min-h-[44px]",
-                  "hover:scale-105 active:scale-95",
+                  "flex items-center gap-2 px-6 py-3 rounded-full text-sm sm:text-base font-black tracking-tight transition-all duration-500 whitespace-nowrap flex-shrink-0 min-h-[48px]",
+                  "hover:scale-105 active:scale-95 shadow-sm",
                   active
-                    ? isDark
-                      ? "bg-white text-black shadow-xl"
-                      : "bg-black text-white shadow-xl"
-                    : isDark
-                    ? "bg-neutral-800/80 text-neutral-300 hover:bg-neutral-700/80"
-                    : "bg-neutral-100/80 text-neutral-700 hover:bg-neutral-200/80"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted/80 backdrop-blur-md"
                 )}
                 aria-label={t.categories[cat.key].name}
                 aria-current={active ? "page" : undefined}
               >
-                <span className="font-semibold">{t.categories[cat.key].name}</span>
+                <span className="opacity-70 text-lg">{cat.emoji}</span>
+                <span>{t.categories[cat.key].name}</span>
               </button>
             );
           })}

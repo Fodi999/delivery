@@ -10,6 +10,7 @@ interface DeliveryMapSectionProps {
   deliveryInfo: DeliveryCalculation | null;
   isDark: boolean;
   language: 'pl' | 'ru' | 'uk' | 'en';
+  autoStartCourier?: boolean;
 }
 
 export function DeliveryMapSection({
@@ -18,105 +19,95 @@ export function DeliveryMapSection({
   onDistanceCalculated,
   deliveryInfo,
   isDark,
-  language
+  language,
+  autoStartCourier = false
 }: DeliveryMapSectionProps) {
   const labels = {
     pl: {
-      deliveryDetails: "Szczegóły dostawy",
-      distance: "Odległość",
-      time: "Czas dostawy",
-      cost: "Koszt dostawy",
-      free: "Darmowa dostawa"
+      deliveryDetails: "Status dostawy",
+      distance: "Trasa",
+      time: "Czas",
+      cost: "Dostawa",
+      free: "Gratis",
+      addressLabel: "Wskaż punkt na mapie"
     },
     ru: {
-      deliveryDetails: "Детали доставки",
-      distance: "Расстояние",
-      time: "Время доставки",
-      cost: "Стоимость доставки",
-      free: "Бесплатная доставка"
+      deliveryDetails: "Статус доставки",
+      distance: "Маршрут",
+      time: "Время",
+      cost: "Доставка",
+      free: "Бесплатно",
+      addressLabel: "Уточните адрес на карте"
     },
     uk: {
-      deliveryDetails: "Деталі доставки",
-      distance: "Відстань",
-      time: "Час доставки",
-      cost: "Вартість доставки",
-      free: "Безкоштовна доставка"
+      deliveryDetails: "Статус доставки",
+      distance: "Маршрут",
+      time: "Час",
+      cost: "Доставка",
+      free: "Безкоштовно",
+      addressLabel: "Уточніть адресу на мапі"
     },
     en: {
-      deliveryDetails: "Delivery details",
-      distance: "Distance",
-      time: "Delivery time",
-      cost: "Delivery cost",
-      free: "Free delivery"
+      deliveryDetails: "Delivery Status",
+      distance: "Route",
+      time: "Time",
+      cost: "Fee",
+      free: "Free",
+      addressLabel: "Pinpoint on map"
     }
   };
 
   const t = labels[language];
 
   return (
-    <div className="space-y-3">
-      {/* Карта */}
-      <div className="h-[300px] rounded-2xl overflow-hidden">
-        <MapboxDeliveryMap
-          onLocationSelect={onLocationSelect}
-          onDistanceCalculated={onDistanceCalculated}
-          externalLocation={mapLocation}
-        />
-      </div>
-
-      {/* Информация о доставке */}
-      {deliveryInfo && (
-        <div className={`p-4 rounded-xl ${
-          isDark ? 'bg-neutral-800' : 'bg-neutral-50'
-        }`}>
-          <h3 className={`text-sm font-semibold mb-3 ${
-            isDark ? 'text-neutral-200' : 'text-neutral-800'
-          }`}>
-            {t.deliveryDetails}
-          </h3>
+    <div className="relative group">
+      {/* 2026 Premium Glow Background */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/10 rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000" />
+      
+      {/* Main Container */}
+      <div className="relative flex flex-col gap-4">
+        {/* Карта - Immersive Full Size */}
+        <div className="relative h-[450px] md:h-[550px] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl transition-all duration-500 group-hover:border-primary/30">
+          <MapboxDeliveryMap
+            onLocationSelect={onLocationSelect}
+            onDistanceCalculated={onDistanceCalculated}
+            externalLocation={mapLocation}
+            autoStartCourier={autoStartCourier}
+          />
           
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className={`text-xs mb-1 ${
-                isDark ? 'text-neutral-400' : 'text-neutral-500'
-              }`}>
-                {t.distance}
-              </div>
-              <div className={`font-semibold ${
-                isDark ? 'text-white' : 'text-neutral-900'
-              }`}>
-                {deliveryInfo.distance?.toFixed(1) || '0'} km
-              </div>
-            </div>
-
-            <div>
-              <div className={`text-xs mb-1 ${
-                isDark ? 'text-neutral-400' : 'text-neutral-500'
-              }`}>
-                {t.time}
-              </div>
-              <div className={`font-semibold ${
-                isDark ? 'text-white' : 'text-neutral-900'
-              }`}>
-                {deliveryInfo.totalTime} min
-              </div>
-            </div>
-
-            <div>
-              <div className={`text-xs mb-1 ${
-                isDark ? 'text-neutral-400' : 'text-neutral-500'
-              }`}>
-                {t.cost}
-              </div>
-              <div className={`font-semibold ${
-                deliveryInfo.isFree ? 'text-green-500' : isDark ? 'text-white' : 'text-neutral-900'
-              }`}>
-                {deliveryInfo.isFree ? t.free : `${deliveryInfo.price} zł`}
-              </div>
+          {/* Floating Address Label Overlay */}
+          <div className="absolute top-6 left-6 right-6 flex justify-between items-start pointer-events-none">
+            <div className="glass px-6 py-3 rounded-full border border-white/20 shadow-xl pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-700">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 block leading-none mb-1">
+                {t.addressLabel}
+              </span>
+              <span className="text-xs font-bold whitespace-nowrap">📍 {deliveryInfo?.distance?.toFixed(1) || '0'} km</span>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Информация о доставке - Premium Glass Overlay Style */}
+        <div className={`grid grid-cols-3 gap-2 p-2 rounded-[2rem] ${
+          isDark ? 'bg-black/40' : 'bg-white/60'
+        } backdrop-blur-xl border border-white/5`}>
+          <div className="glass-light dark:glass-dark rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{t.distance}</span>
+            <span className="text-sm font-black tracking-tight">{deliveryInfo?.distance?.toFixed(1) || '0'} km</span>
+          </div>
+          
+          <div className="glass-light dark:glass-dark rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center border-x border-white/5">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{t.time}</span>
+            <span className="text-sm font-black tracking-tight">{deliveryInfo?.totalTime || '--'} min</span>
+          </div>
+
+          <div className="glass-light dark:glass-dark rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{t.cost}</span>
+            <span className={`text-sm font-black tracking-tight ${deliveryInfo?.isFree ? 'text-primary' : ''}`}>
+              {deliveryInfo?.isFree ? t.free : `${deliveryInfo?.price || '0'} zł`}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

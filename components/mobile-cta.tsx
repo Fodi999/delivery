@@ -21,17 +21,13 @@ export function MobileCTA() {
 
   return (
     <div 
-      className="md:hidden fixed left-0 right-0 z-40 px-4 pb-4"
-      style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+      className="md:hidden fixed left-0 right-0 z-40 px-6 pb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500"
+      style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
     >
       <Button
         onClick={() => router.push('/menu')}
         size="lg"
-        className={`w-full rounded-full h-14 text-lg font-semibold shadow-2xl ${
-          isDark 
-            ? 'bg-white text-black hover:bg-neutral-200' 
-            : 'bg-black text-white hover:bg-neutral-800'
-        }`}
+        className="w-full rounded-full h-16 text-lg font-black tracking-tight shadow-2xl bg-primary text-primary-foreground hover:scale-[1.02] active:scale-95 transition-all duration-300 border-4 border-background/20"
         aria-label={t.orderNow}
       >
         {t.orderNow}
