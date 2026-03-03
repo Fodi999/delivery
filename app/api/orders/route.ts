@@ -15,6 +15,8 @@ export interface CreateOrderRequest {
     name: string;
     phone: string;
     address: string;
+    comment?: string;
+    numberOfPeople?: number;
   };
   deliveryFee: number; // in cents
 }
@@ -57,6 +59,7 @@ export async function POST(req: Request) {
         customerName: body.customer.name,
         customerPhone: cleanPhone,
         address: body.customer.address,
+        comment: body.customer.comment || null,
         deliveryFee: body.deliveryFee,
         status: "PENDING",
         items: {

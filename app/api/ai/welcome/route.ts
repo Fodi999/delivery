@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateWelcomeMessage, generateOrderDescription, type CustomerStats } from "@/lib/groq";
-import { aiTelemetry } from "@/lib/ai-telemetry";
+import { generateWelcome, generateDescription, type CustomerStats } from "@/lib/smart-bot";
 
 export async function POST(req: Request) {
   try {
@@ -17,70 +16,23 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("🤖 Generating AI welcome message for:", customerStats.name);
+    console.log("🤖 SmartBot: generating welcome for:", customerStats.name);
 
-    // Измеряем время ответа AI
-    const startTime = Date.now();
+    const welcomeMessage = generateWelcome(customerStats, language);
+    const description = generateDescription(customerStats, language);
 
-    // Генерируем персонализированные сообщения (теперь возвращают структуру)
-    const [welcomeResponse, descriptionResponse] = await Promise.all([
-      generateWelcomeMessage(customerStats, language),
-      generateOrderDescription(customerStats, language),
-    ]);
+    console.log("✅ SmartBot welcome:", welcomeMessage);
 
-    const responseTime = Date.now() - startTime;
-
-    // 📊 Логируем AI telemetry
-    aiTelemetry.logEvent({
-      type: "welcome",
-      source: welcomeResponse.source,
-      confidence: welcomeResponse.confidence,
-      responseTime,
-      metadata: {
-        language,
-        isVIP: customerStats.isVIP,
-        totalOrders: customerStats.totalOrders,
-      },
-    });
-
-    aiTelemetry.logEvent({
-      type: "compliment",
-      source: descriptionResponse.source,
-      confidence: descriptionResponse.confidence,
-      responseTime,
-    });
-
-    console.log("✅ AI messages generated:", { 
-      welcome: welcomeResponse.text, 
-      description: descriptionResponse.text,
-      sources: {
-        welcome: welcomeResponse.source,
-        description: descriptionResponse.source,
-      },
-      confidence: {
-        welcome: welcomeResponse.confidence,
-        description: descriptionResponse.confidence,
-      },
-      responseTime: `${responseTime}ms`,
-    });
-
-    // Возвращаем текст для обратной совместимости + метаданные для логирования
     return NextResponse.json({
-      welcomeMessage: welcomeResponse.text,
-      description: descriptionResponse.text,
-      // Дополнительные метаданные для A/B тестов и аналитики
-      meta: {
-        welcomeSource: welcomeResponse.source,
-        welcomeConfidence: welcomeResponse.confidence,
-        descriptionSource: descriptionResponse.source,
-        descriptionConfidence: descriptionResponse.confidence,
-        responseTime,
-      },
+      welcomeMessage,
+      description,
+      source: "smartbot",
+      confidence: "high",
     });
   } catch (error) {
-    console.error("AI welcome generation error:", error);
+    console.error("SmartBot welcome error:", error);
     return NextResponse.json(
-      { error: "Failed to generate welcome message" },
+      { error: "Failed to generate welcome" },
       { status: 500 }
     );
   }

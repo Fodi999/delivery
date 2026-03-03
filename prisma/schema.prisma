@@ -40,11 +40,13 @@ model Order {
   total     Int         // Total in cents
   status    OrderStatus @default(PENDING)
   createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   // Данные клиента
   customerName  String
   customerPhone String
   address       String
+  comment       String? // Комментарий к заказу (без лука, аллергия и т.д.)
   deliveryFee   Int     // Delivery fee in cents
 
   items OrderItem[]
@@ -67,7 +69,8 @@ model OrderItem {
 
 enum OrderStatus {
   PENDING
-  PAID
+  ACCEPTED
+  COOKING
   DELIVERING
   DONE
   CANCELED

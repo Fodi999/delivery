@@ -14,21 +14,24 @@ export async function sendOrderToTelegram(order: Order): Promise<void> {
 
     // 1️⃣ Формируем текст заказа
     const caption = `
-� *НОВЫЙ ЗАКАЗ #${order.id}*
+🚀 *НОВЫЙ ЗАКАЗ #${order.id}*
 
 👤 *Клиент:* ${order.customer.name}
-� *Телефон:* ${order.customer.phone}
+📞 *Телефон:* ${order.customer.phone}
 📍 *Адрес:* ${order.customer.address}
+👥 *Персон:* ${order.customer.numberOfPeople ?? 1}
 ${order.customer.comment ? `💬 *Комментарий:* ${order.customer.comment}\n` : ""}
-� *Состав заказа:*
+📋 *Состав заказа:*
 ${order.items
   .map((i) => `  • ${i.name} × ${i.quantity} → ${i.price * i.quantity} zł`)
   .join("\n")}
 
 💰 *Сумма:* ${order.total} zł
+📦 *Доставка:* ${(order.deliveryFee ?? 0) > 0 ? `${order.deliveryFee} zł` : "Бесплатно"}
 💳 *Оплата:* ${order.payment === "cash" ? "Наличными при получении" : "Картой онлайн"}
 🏙 *Город:* ${order.city}
-� *Время:* ${order.createdAt ? new Date(order.createdAt).toLocaleString("ru-RU") : new Date().toLocaleString("ru-RU")}
+🔥 *ИТОГО К ОПЛАТЕ:* ${order.total + (order.deliveryFee || 0)} zł
+🕒 *Время:* ${order.createdAt ? new Date(order.createdAt).toLocaleString("ru-RU") : new Date().toLocaleString("ru-RU")}
 `;
 
     // 2️⃣ Проверяем, есть ли фото у блюд
@@ -38,7 +41,8 @@ ${order.items
     const reply_markup = {
       inline_keyboard: [
         [{ text: "✅ Принять заказ", callback_data: `accept_${order.id}` }],
-        [{ text: "� Отправить в доставку", callback_data: `delivery_${order.id}` }],
+        [{ text: "🍳 Готовится", callback_data: `cooking_${order.id}` }],
+        [{ text: "🛵 Курьер выехал", callback_data: `delivery_${order.id}` }],
         [{ text: "❌ Отменить заказ", callback_data: `cancel_${order.id}` }],
       ],
     };
@@ -115,7 +119,5 @@ ${order.items
     }
   } catch (error) {
     console.error("❌ Failed to send order to Telegram:", error);
-    // Не бросаем ошибку, чтобы заказ все равно создавался
-    // throw error;
   }
 }

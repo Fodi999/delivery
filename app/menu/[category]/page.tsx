@@ -121,19 +121,15 @@ export default function MenuCategoryPage() {
                         price: item.price,
                         image: item.image,
                       });
-                      toast.success(
-                        language === "pl"
-                          ? "Dodano do koszyka"
-                          : language === "ru"
-                          ? "Добавлено в корзину"
-                          : language === "uk"
-                          ? "Додано до кошика"
-                          : "Added to cart",
-                        {
-                          duration: 2000,
-                          className: "rounded-2xl font-bold",
-                        }
-                      );
+                      const name = item.nameTranslations[language];
+                      toast.success(name, {
+                        id: `cart-${item.id}`,
+                        description: language === "pl" ? `Dodano do koszyka · ${item.price} zł` :
+                                     language === "ru" ? `Добавлено в корзину · ${item.price} zł` :
+                                     language === "uk" ? `Додано до кошика · ${item.price} zł` :
+                                     `Added to cart · ${item.price} zł`,
+                        duration: 2500,
+                      });
                     }}
                     className="w-14 h-14 rounded-3xl bg-primary text-primary-foreground flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90 shadow-xl shadow-primary/10 group-hover:shadow-primary/30"
                     aria-label={t.addToCart}

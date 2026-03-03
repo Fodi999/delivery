@@ -66,16 +66,20 @@ export function PersonSelector({ numberOfPeople, onChange, language, isDark }: P
           <button
             type="button"
             onClick={() => onChange(5)}
-            className="h-14 px-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest transition-all duration-500 glass-dark border border-white/10 hover:border-primary/50 hover:bg-primary/10 text-foreground/60 dark:text-white/60 hover:text-primary dark:hover:text-primary whitespace-nowrap"
+            className={`h-14 px-6 rounded-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest transition-all duration-300 border hover:border-primary/50 hover:bg-primary/10 hover:text-primary whitespace-nowrap ${
+              isDark
+                ? 'bg-white/5 border-white/10 text-white/50 hover:text-primary'
+                : 'bg-black/4 border-black/10 text-black/40 hover:text-primary'
+            }`}
           >
             {t.largeGroup}
           </button>
         ) : (
-          <div className="flex items-center gap-4 px-3 py-1.5 rounded-full glass-dark border border-primary/30 animate-in zoom-in-95">
+          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full border border-primary/30 animate-in zoom-in-95 ${isDark ? 'bg-white/5' : 'bg-black/4'}`}>
             <button
               type="button"
               onClick={() => onChange(Math.max(1, numberOfPeople - 1))}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 text-white"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isDark ? 'bg-white/5 hover:bg-white/10 text-white' : 'bg-black/5 hover:bg-black/10 text-black'}`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"></line>

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/app-context";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { NavProvider } from "@/components/nav-provider";
 
 const geistSans = Geist({
@@ -70,7 +70,12 @@ export default function RootLayout({
         <AppProvider>
           {children}
           <NavProvider />
-          <Toaster position="top-center" richColors />
+          <Toaster
+            position="top-center"
+            expand={false}
+            gap={8}
+            toastOptions={{ duration: 3000 }}
+          />
         </AppProvider>
       </body>
     </html>

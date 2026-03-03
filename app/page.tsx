@@ -4,11 +4,10 @@ import { useApp } from "@/context/app-context";
 import { Header } from "@/components/header";
 import { MobileHeader } from "@/components/mobile-header";
 import { translations } from "@/lib/translations";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Star, Package, Truck } from "lucide-react";
+import { Star } from "lucide-react";
 import { MobileCTA } from "@/components/mobile-cta";
 
 export default function Home() {
@@ -149,28 +148,29 @@ export default function Home() {
               <button
                 key={item.name}
                 onClick={() => router.push(`/menu/${item.category}`)}
-                className={`relative overflow-hidden rounded-2xl h-[160px] sm:h-[180px] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
+                className={`relative overflow-hidden rounded-[2rem] h-[160px] sm:h-[180px] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] ${
                   isDark
-                    ? 'bg-neutral-900 border border-neutral-800'
-                    : 'bg-neutral-50 border border-neutral-200'
+                    ? 'border border-white/8'
+                    : 'border border-black/6'
                 }`}
               >
                 {/* Background Image */}
-                <img 
-                  src={item.image} 
+                <Image
+                  src={item.image}
                   alt={item.name}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
                 
                 {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                 
                 {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="text-white font-semibold text-base sm:text-lg mb-1">
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="text-white font-black text-base sm:text-lg tracking-tight leading-tight mb-0.5">
                     {item.name}
                   </h3>
-                  <p className="text-white/90 text-sm font-medium">
+                  <p className="text-white/70 text-sm font-bold">
                     {item.price}
                   </p>
                 </div>

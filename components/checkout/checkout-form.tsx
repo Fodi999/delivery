@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -20,6 +19,8 @@ import {
 import { useCustomerLookup } from "@/lib/hooks/use-customer-lookup";
 import { formatPrice } from "@/lib/price";
 import { menuItems } from "@/lib/menu-data";
+import { saveCustomerLocally } from "@/lib/customer-recognition";
+import { useDeliveryStore } from "@/store/delivery-store";
 import { PersonSelector } from "./core/PersonSelector";
 import { AIRecommendationCard, AISuggestions } from "./ai/AIRecommendations";
 import { DeliveryMapSection } from "./delivery/DeliveryMapSection";
@@ -32,6 +33,7 @@ export function CheckoutForm() {
   const items = useCartStore((s) => s.items);
   const router = useRouter();
   const t = translations[language];
+  const setGlobalDeliveryInfo = useDeliveryStore((s) => s.setDeliveryInfo);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,6 +73,7 @@ export function CheckoutForm() {
     if (deliveryInfo?.distance && deliveryInfo?.duration) {
       const updated = calculateDeliveryPrice(deliveryInfo.distance, total, deliveryInfo.duration);
       setDeliveryInfo(updated);
+      setGlobalDeliveryInfo(updated);
     }
   }, [total]);
 
@@ -318,11 +321,12 @@ export function CheckoutForm() {
       });
 
       toast.success(`✨ ${suggestionName}`, {
-        description: language === "pl" ? `Dodano do koszyka • ${menuItem.price} zł` :
-                   language === "ru" ? `Добавлено в корзину • ${menuItem.price} zł` :
-                   language === "uk" ? `Додано до кошика • ${menuItem.price} zł` :
-                   `Added to cart • ${menuItem.price} zł`,
-        duration: 3000,
+        description: language === "pl" ? `Dodano do koszyka · ${menuItem.price} zł` :
+                   language === "ru" ? `Добавлено в корзину · ${menuItem.price} zł` :
+                   language === "uk" ? `Додано до кошика · ${menuItem.price} zł` :
+                   `Added to cart · ${menuItem.price} zł`,
+        icon: "🛒",
+        duration: 2500,
       });
 
       // Перегенерируем рекомендации после добавления
@@ -343,6 +347,8 @@ export function CheckoutForm() {
                    language === "ru" ? "Интересный выбор!" :
                    language === "uk" ? "Цікавий вибір!" :
                    "Interesting choice!",
+        icon: "✨",
+        duration: 2000,
       });
     }
   };
@@ -361,12 +367,22 @@ export function CheckoutForm() {
     setDeliveryInfo(delivery);
 
     if (!delivery.allowed) {
-      toast.error(delivery.reason || "Доставка невозможна");
+      toast.error(delivery.reason || "Доставка невозможна", {
+        icon: "🚫",
+        duration: 4000,
+      });
     } else {
       const timeRange = formatDeliveryTime(delivery.totalTime || 0);
-      toast.success(
-        `Доставка: ${delivery.isFree ? "Бесплатно" : `${delivery.price} zł`} • ${timeRange}`
-      );
+      const priceLabel = delivery.isFree ? "Бесплатно" : `${delivery.price} zł`;
+      toast.success(`${priceLabel} · ${timeRange}`, {
+        description:
+          language === "pl" ? "Dostawa obliczona" :
+          language === "ru" ? "Доставка рассчитана" :
+          language === "uk" ? "Доставку розраховано" :
+          "Delivery calculated",
+        icon: "🛵",
+        duration: 3000,
+      });
       
       // 🚚 Генерируем AI-сообщение о доставке
       generateDeliveryAssistant(delivery);
@@ -470,7 +486,8 @@ export function CheckoutForm() {
             ? "Адрес найден на карте"
             : language === "uk"
             ? "Адресу знайдено на карті"
-            : "Address found on map"
+            : "Address found on map",
+          { icon: "📍", duration: 2500 }
         );
       } else {
         throw new Error("Address not found");
@@ -544,6 +561,8 @@ export function CheckoutForm() {
                     : language === "uk"
                     ? "Можна змінити вручну"
                     : "You can edit manually",
+                icon: "📍",
+                duration: 3000,
               }
             );
           } catch (error) {
@@ -583,6 +602,8 @@ export function CheckoutForm() {
                     : language === "uk"
                     ? "Заповніть адресу вручну"
                     : "Fill address manually",
+                icon: "🔒",
+                duration: 4000,
               }
             );
           } else {
@@ -621,7 +642,9 @@ export function CheckoutForm() {
     formData.name.trim().length > 0 &&
     formData.phone.trim().length > 0 &&
     validatePhone(formData.phone) &&
-    formData.address.trim().length > 0;
+    formData.address.trim().length > 0 &&
+    deliveryInfo !== null &&      // ← адрес должен быть просчитан через карту
+    deliveryInfo.allowed === true; // ← зона доставки должна быть доступна
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -672,6 +695,8 @@ export function CheckoutForm() {
         name: formData.name.trim(),
         phone: `+48 ${formData.phone.trim()}`,
         address: formData.address.trim(),
+        comment: formData.comment.trim(),
+        numberOfPeople: formData.numberOfPeople,
       },
       deliveryFee: deliveryFeeInCents,
     };
@@ -697,10 +722,18 @@ export function CheckoutForm() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Сохраняем данные клиента в localStorage для автозаполнения следующего заказа
+        saveCustomerLocally({
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          address: formData.address.trim(),
+        });
+
         // Успех
         toast.success(t.checkout.orderSuccess, {
           description: t.checkout.orderSuccessHint,
-          duration: 2000,
+          icon: "🎉",
+          duration: 2500,
         });
 
         // Очищаем корзину
@@ -733,6 +766,8 @@ export function CheckoutForm() {
               : language === "uk"
               ? "Спробуйте знову"
               : "Please try again",
+          icon: "❌",
+          duration: 4000,
         }
       );
     } finally {
@@ -741,124 +776,133 @@ export function CheckoutForm() {
   };
 
   return (
-    <div className="space-y-16">
-      {/* 🤖 01. GROUP: CUSTOMER PROFILE & PARTY SIZE */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-4 ml-6 pb-2">
-          <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" />
-          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
-            01. Personal Profile
-          </h2>
+    <div className="space-y-10">
+
+      {/* ══════════════════════════════════════════════
+          01. PERSONAL PROFILE
+      ══════════════════════════════════════════════ */}
+      <section className="space-y-5">
+        {/* Section header */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 border border-primary/20 shrink-0">
+            <span className="text-[10px] font-black text-primary">01</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/30">
+            Personal Profile
+          </span>
+          <div className="flex-1 h-px bg-foreground/5 dark:bg-white/5" />
         </div>
 
-        <div className="bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl rounded-[3rem] p-1 border border-black/10 dark:border-white/10 shadow-2xl relative overflow-hidden">
-          <div className="p-8 sm:p-10 space-y-10">
-            {/* Person Selector - Integrated at top */}
-            <div className="pb-8 border-b border-black/10 dark:border-white/10">
-              <PersonSelector
-                numberOfPeople={formData.numberOfPeople}
-                onChange={(val) => setFormData({ ...formData, numberOfPeople: val })}
-                language={language}
-                isDark={isDark}
+        <div className={`rounded-[2.5rem] border ${isDark ? 'bg-white/[0.03] border-white/8' : 'bg-white border-black/6'} shadow-xl overflow-hidden`}>
+
+          {/* Person selector row */}
+          <div className={`px-8 py-6 border-b ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+            <PersonSelector
+              numberOfPeople={formData.numberOfPeople}
+              onChange={(val) => setFormData({ ...formData, numberOfPeople: val })}
+              language={language}
+              isDark={isDark}
+            />
+          </div>
+
+          {/* Name + Phone */}
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-black/5 dark:divide-white/5">
+            {/* Name */}
+            <div className="px-8 py-6 space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.25em] text-foreground/40 dark:text-white/30 block">
+                {language === "ru" ? "Ваше Имя" : language === "pl" ? "Your Name" : language === "uk" ? "Ваше Ім'я" : "Your Name"}
+              </label>
+              <Input
+                placeholder={t.checkout.namePlaceholder}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`h-14 rounded-2xl px-5 text-base font-bold border focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 transition-all shadow-none ${isDark ? 'bg-white/5 border-white/10 placeholder:text-white/15' : 'bg-black/3 border-black/10 placeholder:text-black/20'}`}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Имя */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 ml-6 group-focus-within:text-primary transition-colors">
-                  {language === "ru" ? "Ваше Имя" : "Your Name"}
-                </label>
-                <div className="relative">
-                  <Input
-                    placeholder={t.checkout.namePlaceholder}
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="h-20 rounded-[2rem] px-8 text-xl font-bold bg-black/5 dark:bg-black/60 border border-black/20 dark:border-white/20 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/50 focus-visible:bg-black/10 dark:focus-visible:bg-black/80 placeholder:text-foreground/20 dark:placeholder:text-white/10 transition-all shadow-sm"
-                  />
-                </div>
+            {/* Phone */}
+            <div className="px-8 py-6 space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.25em] text-foreground/40 dark:text-white/30 block">
+                {language === "ru" ? "Номер телефона" : language === "pl" ? "Phone Number" : language === "uk" ? "Номер телефону" : "Phone Number"}
+              </label>
+              <div className={`h-14 rounded-2xl px-2 border flex items-center transition-all focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/40 ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/3 border-black/10'}`}>
+                <PhoneInput
+                  value={formData.phone}
+                  onChange={(val) => setFormData({ ...formData, phone: val })}
+                  isDark={isDark}
+                />
               </div>
-
-              {/* Телефон */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 ml-6 group-focus-within:text-primary transition-colors">
-                  {language === "ru" ? "Номер телефона" : "Phone Number"}
-                </label>
-                <div className="relative">
-                  <div className="h-20 rounded-[2rem] px-1 bg-black/5 dark:bg-black/60 border border-black/20 dark:border-white/20 group-focus-within:border-primary/50 group-focus-within:ring-1 group-focus-within:ring-primary/50 transition-all flex items-center shadow-sm">
-                    <PhoneInput
-                      value={formData.phone}
-                      onChange={(val) => setFormData({ ...formData, phone: val })}
-                      isDark={isDark}
-                    />
-                  </div>
-                </div>
-                {phoneError && (
-                  <p className="text-destructive text-xs font-black uppercase tracking-widest pl-8">
-                    {phoneError}
-                  </p>
-                )}
-              </div>
+              {phoneError && (
+                <p className="text-destructive text-[9px] font-black uppercase tracking-widest pl-1">{phoneError}</p>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* 🚚 02. GROUP: IMMERSIVE MAP & DELIVERY */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-4 ml-6 pb-2">
-          <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
-            02. Delivery Destination
-          </h2>
+      {/* ══════════════════════════════════════════════
+          02. DELIVERY DESTINATION
+      ══════════════════════════════════════════════ */}
+      <section className="space-y-5">
+        {/* Section header */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 shrink-0">
+            <span className="text-[10px] font-black text-blue-500">02</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/30">
+            Delivery Destination
+          </span>
+          <div className="flex-1 h-px bg-foreground/5 dark:bg-white/5" />
         </div>
 
-        <div className="space-y-6">
-          {/* Address Input with Auto-Detect */}
-          <div className="relative group/address">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-transparent rounded-[2.5rem] blur opacity-0 group-focus-within/address:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            <div className="relative flex items-center bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl rounded-[2.5rem] border border-black/20 dark:border-white/20 shadow-xl overflow-hidden group-focus-within/address:border-blue-500/50 group-focus-within/address:ring-1 group-focus-within/address:ring-blue-500/50 transition-all">
-              <div className="flex-1 flex flex-col px-8 py-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50 dark:text-white/40 mb-1">
-                  {language === "ru" ? "Адрес доставки" : "Delivery Address"}
+        <div className="space-y-4">
+          {/* Address input card */}
+          <div className={`rounded-[2rem] border overflow-hidden ${isDark ? 'bg-white/[0.03] border-white/8' : 'bg-white border-black/6'} shadow-xl`}>
+            <div className="flex items-stretch">
+              <div className="flex-1 px-7 py-5 space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-[0.25em] text-blue-500/70 block">
+                  {language === "ru" ? "Адрес доставки" : language === "pl" ? "Delivery Address" : language === "uk" ? "Адреса доставки" : "Delivery Address"}
                 </label>
                 <Input
                   placeholder={language === "ru" ? "Улица, номер дома, город..." : "Street, house number, city..."}
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="h-10 p-0 text-xl font-bold bg-transparent border-none focus-visible:ring-0 shadow-none placeholder:text-foreground/20 dark:placeholder:text-white/10"
+                  className={`h-11 px-0 text-base font-bold bg-transparent border-none focus-visible:ring-0 shadow-none placeholder:text-foreground/20 dark:placeholder:text-white/15`}
                 />
               </div>
-              
+
               <button
                 type="button"
                 onClick={handleUseLocation}
                 disabled={isLoadingLocation}
-                className="h-full px-8 border-l border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-all group/loc flex flex-col items-center justify-center min-w-[120px]"
+                className={`px-7 border-l flex flex-col items-center justify-center gap-1 min-w-[88px] transition-all hover:bg-blue-500/5 active:scale-95 ${isDark ? 'border-white/8' : 'border-black/6'}`}
               >
                 {isLoadingLocation ? (
-                  <div className="w-6 h-6 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span className="text-2xl group-hover/loc:scale-110 transition-transform">📍</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest mt-1 text-blue-500">
-                      {language === "ru" ? "ГДЕ Я?" : "AUTO"}
-                    </span>
+                    {/* Pin icon */}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">AUTO</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          <DeliveryMapSection 
+          {/* Map + Countdown */}
+          <DeliveryMapSection
             mapLocation={mapLocation}
             onLocationSelect={(location) => {
               setMapLocation(location);
-              setAutoStartCourier(false); // Стоп авто-анимация если пользователь тащит маркер вручную
+              setAutoStartCourier(false);
             }}
             onDistanceCalculated={(dist, dur) => {
               const calc = calculateDeliveryPrice(dist, total, dur);
               setDeliveryInfo(calc);
+              setGlobalDeliveryInfo(calc);
             }}
             deliveryInfo={deliveryInfo}
             isDark={isDark}
@@ -866,34 +910,45 @@ export function CheckoutForm() {
             autoStartCourier={autoStartCourier}
           />
         </div>
-      </section>      {/* 📝 03. GROUP: SPECIAL REQUESTS & EXTRAS */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-4 ml-6 pb-2">
-          <div className="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.4)]" />
-          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/40">
-            03. Final Details & AI Extras
-          </h2>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          03. FINAL DETAILS & AI EXTRAS
+      ══════════════════════════════════════════════ */}
+      <section className="space-y-5">
+        {/* Section header */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/10 border border-amber-500/20 shrink-0">
+            <span className="text-[10px] font-black text-amber-500">03</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40 dark:text-white/30">
+            Final Details & AI Extras
+          </span>
+          <div className="flex-1 h-px bg-foreground/5 dark:bg-white/5" />
         </div>
 
-        <div className="space-y-8">
-          <div className="relative">
+        <div className={`rounded-[2.5rem] border ${isDark ? 'bg-white/[0.03] border-white/8' : 'bg-white border-black/6'} shadow-xl overflow-hidden`}>
+          {/* Comment textarea */}
+          <div className={`px-7 py-6 border-b ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+            <label className="text-[9px] font-black uppercase tracking-[0.25em] text-foreground/40 dark:text-white/30 block mb-3">
+              {language === "ru" ? "Комментарий к заказу" : language === "pl" ? "Uwagi do zamówienia" : language === "uk" ? "Коментар до замовлення" : "Order notes"}
+            </label>
             <Textarea
               placeholder={t.checkout.commentPlaceholder}
               value={formData.comment}
               onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-              className="min-h-[160px] rounded-[3rem] p-8 text-lg font-bold bg-white/80 dark:bg-[#0a0a0a] backdrop-blur-3xl border border-black/20 dark:border-white/20 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/50 focus-visible:bg-black/5 dark:focus-visible:bg-black/60 transition-all resize-none shadow-xl placeholder:text-foreground/30 dark:placeholder:text-white/40"
+              className={`min-h-[100px] rounded-2xl p-4 text-sm font-medium border resize-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 transition-all shadow-none ${isDark ? 'bg-white/5 border-white/10 placeholder:text-white/15' : 'bg-black/3 border-black/10 placeholder:text-black/20'}`}
             />
           </div>
 
-          {/* ✅ Premium AI Recommendations & Upsell */}
-          <div className="space-y-12">
-            <AIRecommendationCard 
+          {/* AI blocks */}
+          <div className="px-7 py-6 space-y-5">
+            <AIRecommendationCard
               recommendation={aiRecommendation}
               isDark={isDark}
               language={language}
             />
-            
-            <AISuggestions 
+            <AISuggestions
               suggestions={aiSuggestions}
               onAddToCart={handleAddToCart}
               isLoading={isLoadingSuggestions}
@@ -903,36 +958,55 @@ export function CheckoutForm() {
         </div>
       </section>
 
-      {/* 🚀 SUBMIT BUTTON */}
-      <div className="pt-12">
-        <Button
+      {/* ══════════════════════════════════════════════
+          SUBMIT
+      ══════════════════════════════════════════════ */}
+      <div className="pt-4 pb-8">
+        <button
           type="button"
           onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="w-full h-24 rounded-[3rem] text-2xl font-black tracking-tighter shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all duration-500 bg-primary text-primary-foreground border-b-8 border-black/20 group relative overflow-hidden"
+          disabled={isSubmitting || !isFormValid}
+          className="w-full h-20 rounded-[2rem] font-black tracking-tight text-lg shadow-2xl shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.015] active:scale-[0.985] transition-all duration-300 bg-primary text-primary-foreground border-b-4 border-black/15 relative overflow-hidden group disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
         >
-          {/* Internal Glow Effect */}
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
-          {isSubmitting ? (
-            <span className="flex items-center gap-4">
-              <span className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-              {language === 'ru' ? 'Оформляем...' : 'Processing...'}
-            </span>
-          ) : (
-            <div className="flex items-center justify-between w-full px-12 relative z-10">
-              <span className="flex items-center gap-4">
-                <span className="text-3xl group-hover:scale-125 transition-transform duration-500">🚀</span>
-                {t.checkout.orderButton}
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors duration-300" />
+          <div className="relative z-10 flex items-center justify-between px-8">
+            {isSubmitting ? (
+              <span className="flex items-center gap-3 mx-auto">
+                <span className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin" />
+                <span>{language === 'ru' ? 'Оформляем...' : language === 'pl' ? 'Przetwarzamy...' : language === 'uk' ? 'Оформлюємо...' : 'Processing...'}</span>
               </span>
-              <div className="flex flex-col items-end">
-                <span className="text-3xl font-black">{total}</span>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60 m-0 p-0 leading-none">PLN</span>
-              </div>
-            </div>
-          )}
-        </Button>
+            ) : (
+              <>
+                <span className="flex items-center gap-3">
+                  {/* Rocket icon */}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-[-2px] group-hover:translate-x-[1px] transition-transform duration-300">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                  </svg>
+                  {t.checkout.orderButton}
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black">{total}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60">PLN</span>
+                </div>
+              </>
+            )}
+          </div>
+        </button>
+
+        {/* Подсказка когда форма не готова */}
+        {!isFormValid && !isSubmitting && (
+          <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-foreground/30 dark:text-white/20 mt-3">
+            {!deliveryInfo
+              ? (language === "ru" ? "Выберите адрес на карте для расчёта доставки" : language === "pl" ? "Wybierz adres na mapie" : "Select address on map")
+              : !deliveryInfo.allowed
+              ? (language === "ru" ? "Адрес за зоной доставки" : language === "pl" ? "Poza strefą dostawy" : "Outside delivery zone")
+              : (language === "ru" ? "Заполните имя и телефон" : language === "pl" ? "Wypełnij imię i telefon" : "Fill name and phone")}
+          </p>
+        )}
       </div>
+
     </div>
   );
 }

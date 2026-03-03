@@ -2,7 +2,9 @@
 
 import { useCartStore } from "@/store/cart-store";
 import { useApp } from "@/context/app-context";
+import { useDeliveryStore } from "@/store/delivery-store";
 import { translations } from "@/lib/translations";
+import { formatDeliveryTime } from "@/lib/delivery-calculator";
 import Image from "next/image";
 
 export function OrderSummary() {
@@ -10,6 +12,19 @@ export function OrderSummary() {
   const total = useCartStore((s) => s.total());
   const { isDark, language } = useApp();
   const t = translations[language];
+  const deliveryInfo = useDeliveryStore((s) => s.deliveryInfo);
+
+  const deliveryPrice = deliveryInfo?.allowed
+    ? deliveryInfo.isFree
+      ? (language === "ru" ? "Бесплатно" : language === "pl" ? "Darmowa" : "Free")
+      : `${deliveryInfo.price} PLN`
+    : "—";
+
+  const deliveryTime = deliveryInfo?.totalTime
+    ? formatDeliveryTime(deliveryInfo.totalTime)
+    : (language === "ru" ? "После выбора адреса" : language === "pl" ? "Po wyborze adresu" : "After address");
+
+  const grandTotal = total + (deliveryInfo?.allowed && !deliveryInfo.isFree ? (deliveryInfo.price ?? 0) : 0);
 
   return (
     <div className="glass rounded-[2.5rem] p-8 sm:p-10 border border-white/5 shadow-2xl overflow-hidden relative">
@@ -22,10 +37,7 @@ export function OrderSummary() {
 
       <div className="space-y-6 mb-10 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
         {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex gap-4 group transition-all duration-300"
-          >
+          <div key={item.id} className="flex gap-4 group transition-all duration-300">
             <div className="relative w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 shadow-sm border border-white/5">
               <Image
                 src={item.image}
@@ -45,54 +57,69 @@ export function OrderSummary() {
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1 opacity-50 text-[10px] font-black uppercase tracking-widest">
-                <span>
-                  {item.quantity} × {item.price} PLN
-                </span>
+                <span>{item.quantity} × {item.price} PLN</span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="pt-8 border-t border-white/10">
-        <div className="flex justify-between items-end mb-1">
+      {/* Subtotal + Delivery + Grand Total */}
+      <div className={`pt-6 border-t ${isDark ? "border-white/10" : "border-black/8"} space-y-3`}>
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+            {language === "ru" ? "Товары" : language === "pl" ? "Produkty" : "Subtotal"}
+          </span>
+          <span className="font-black text-sm">{total} PLN</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+            {language === "ru" ? "Доставка" : language === "pl" ? "Dostawa" : "Delivery"}
+          </span>
+          <span className={`font-black text-sm ${deliveryInfo?.isFree ? "text-green-500" : ""}`}>
+            {deliveryPrice}
+          </span>
+        </div>
+        <div className={`flex justify-between items-end pt-3 border-t ${isDark ? "border-white/10" : "border-black/8"}`}>
           <span className="text-xs font-black uppercase tracking-[0.2em] opacity-40">
             {t.cart.total}
           </span>
           <span className="text-4xl font-black tracking-tighter">
-            {total}{" "}
+            {grandTotal}{" "}
             <span className="text-lg font-medium opacity-60 ml-1">PLN</span>
           </span>
         </div>
       </div>
 
-      {/* Delivery info - Ultra premium look */}
-      <div className="mt-10 grid grid-cols-1 gap-4">
-        <div className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
-            🚚
+      {/* Delivery + Payment info */}
+      <div className="mt-8 grid grid-cols-1 gap-3">
+        <div className={`flex items-center gap-4 p-4 rounded-3xl border ${isDark ? "bg-white/5 border-white/5" : "bg-black/3 border-black/5"}`}>
+          {/* Scooter SVG */}
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+              <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v9a2 2 0 0 1-2 2h-2"/><circle cx="9" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+            </svg>
           </div>
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest opacity-40">
-              Delivery
+              {language === "ru" ? "Время доставки" : language === "pl" ? "Czas dostawy" : "Delivery time"}
             </div>
-            <div className="text-sm font-black tracking-tight">
-              30-45 min
-            </div>
+            <div className="text-sm font-black tracking-tight">{deliveryTime}</div>
           </div>
         </div>
-        <div className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
-            💳
+        <div className={`flex items-center gap-4 p-4 rounded-3xl border ${isDark ? "bg-white/5 border-white/5" : "bg-black/3 border-black/5"}`}>
+          {/* Card SVG */}
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
           </div>
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest opacity-40">
-              Payment
+              {language === "ru" ? "Оплата" : language === "pl" ? "Płatność" : "Payment"}
             </div>
             <div className="text-sm font-black tracking-tight">
-              {language === "ru"
-                ? "При получении"
-                : "On delivery"}
+              {language === "ru" ? "При получении" : language === "pl" ? "Przy odbiorze" : "On delivery"}
             </div>
           </div>
         </div>
@@ -100,3 +127,4 @@ export function OrderSummary() {
     </div>
   );
 }
+

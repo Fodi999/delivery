@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { assessPortions } from "@/lib/smart-bot";
 
 interface CartItem {
   id: string;
@@ -13,9 +9,8 @@ interface CartItem {
 }
 
 export async function POST(req: Request) {
-  let body: any;
   try {
-    body = await req.json();
+    const body = await req.json();
     const { numberOfPeople, cartItems, language } = body as {
       numberOfPeople: number;
       cartItems: CartItem[];
@@ -29,83 +24,24 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log(`🍱 Generating AI recommendation for ${numberOfPeople} people with ${cartItems.length} items`);
+    console.log(`🍱 SmartBot: assessing portions for ${numberOfPeople} people with ${cartItems.length} items`);
 
-    // Подсчитываем общее количество порций
-    const totalPortions = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    
-    // Формируем список блюд
-    const itemsList = cartItems
-      .map(item => `${item.name} (${item.quantity} шт)`)
-      .join(", ");
+    const result = assessPortions(cartItems, numberOfPeople, language);
 
-    const languagePrompts = {
-      pl: `Jestem AI asystentem restauracji japońskiej. Klient zamawia jedzenie dla ${numberOfPeople} osób. 
-W koszyku: ${itemsList} (razem ${totalPortions} porcji).
-Oceń czy to wystarczająco dużo jedzenia. Odpowiedz krótko (max 15 słów), przyjaznym tonem. Jeśli to za mało - zasugeruj ile dodać. Jeśli ok - pochwal wybór. Bez emoji.`,
-      ru: `Я AI-ассистент японского ресторана. Клиент заказывает еду на ${numberOfPeople} чел. 
-В корзине: ${itemsList} (всего ${totalPortions} порций).
-Оцени, достаточно ли это еды. Ответь кратко (макс 15 слов), дружелюбным тоном. Если мало - предложи сколько добавить. Если норм - похвали выбор. Без эмодзи.`,
-      uk: `Я AI-асистент японського ресторану. Клієнт замовляє їжу на ${numberOfPeople} осіб. 
-У кошику: ${itemsList} (всього ${totalPortions} порцій).
-Оціни, чи достатньо це їжі. Відповідь коротко (макс 15 слів), дружнім тоном. Якщо мало - запропонуй скільки додати. Якщо норм - похвали вибір. Без емодзі.`,
-      en: `I'm an AI assistant for a Japanese restaurant. Customer is ordering food for ${numberOfPeople} people. 
-In cart: ${itemsList} (total ${totalPortions} portions).
-Assess if this is enough food. Reply briefly (max 15 words), friendly tone. If not enough - suggest how much to add. If ok - praise the choice. No emoji.`,
-    };
-
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "user",
-          content: languagePrompts[language],
-        },
-      ],
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.7,
-      max_tokens: 60,
-    });
-
-    const recommendation = completion.choices[0]?.message?.content?.trim() || "";
-    
-    console.log("✅ AI recommendation generated:", recommendation);
+    console.log("✅ SmartBot portion assessment:", result.recommendation);
 
     return NextResponse.json({
-      recommendation,
-      totalPortions,
-      recommendedPortions: numberOfPeople * 1.5, // Рекомендуем 1.5 порции на человека
-      isEnough: totalPortions >= numberOfPeople * 1.2, // Проверка достаточности
+      recommendation: result.recommendation,
+      totalPortions: result.totalPortions,
+      totalGrams: result.totalGrams,
+      recommendedGrams: result.recommendedGrams,
+      isEnough: result.isEnough,
     });
   } catch (error) {
-    console.error("AI food recommendation error:", error);
-    
-    // Fallback рекомендация
-    const cartItemsFromCatch = (body?.cartItems || []) as CartItem[];
-    const numberOfPeopleFromCatch = (body?.numberOfPeople || 1) as number;
-    const languageFromCatch = (body?.language || "ru") as "pl" | "ru" | "uk" | "en";
-    
-    const totalPortionsFromCatch = cartItemsFromCatch.reduce((sum, item) => sum + item.quantity, 0);
-    
-    const fallbackMessages = {
-      pl: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2 
-        ? "Świetny wybór! To powinna być wystarczająca ilość jedzenia. 🍱"
-        : `Polecam dodać jeszcze ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} porcje. 🥟`,
-      ru: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
-        ? "Отличный выбор! Этого должно хватить. 🍱"
-        : `Рекомендую добавить ещё ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} порций. 🥟`,
-      uk: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
-        ? "Чудовий вибір! Цього має вистачити. 🍱"
-        : `Рекомендую додати ще ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} порцій. 🥟`,
-      en: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2
-        ? "Great choice! This should be enough. 🍱"
-        : `I recommend adding ${Math.ceil(numberOfPeopleFromCatch * 1.5 - totalPortionsFromCatch)} more portions. 🥟`,
-    };
-
-    return NextResponse.json({
-      recommendation: fallbackMessages[languageFromCatch],
-      totalPortions: totalPortionsFromCatch,
-      recommendedPortions: numberOfPeopleFromCatch * 1.5,
-      isEnough: totalPortionsFromCatch >= numberOfPeopleFromCatch * 1.2,
-    });
+    console.error("SmartBot food-recommendation error:", error);
+    return NextResponse.json(
+      { error: "Failed to assess portions" },
+      { status: 500 }
+    );
   }
 }

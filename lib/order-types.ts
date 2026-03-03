@@ -13,6 +13,7 @@ export type Order = {
     phone: string;
     address: string;
     comment?: string;
+    numberOfPeople?: number;
   };
   items: OrderItem[];
   total: number; // Total in cents
