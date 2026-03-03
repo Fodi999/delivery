@@ -22,38 +22,36 @@ const connectionString = process.env.DATABASE_URL.replace(
 
 console.log("🔌 Connection string configured (channel_binding removed for compatibility)");
 
-// Create connection pool
+// Serverless-safe pool: small max size, short timeouts so Vercel lambdas
+// don't exhaust DB connections. The pool is cached in globalThis so it
+// survives warm re-invocations in the same container.
 if (!globalForPrisma.pool) {
   console.log("🔌 Creating PostgreSQL connection pool...");
   globalForPrisma.pool = new Pool({
     connectionString,
-    max: 10, // Maximum pool size
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    max: 3,                        // ✅ Small pool for serverless
+    idleTimeoutMillis: 10000,      // ✅ Release idle connections quickly
+    connectionTimeoutMillis: 5000, // ✅ Fail fast if DB unreachable
+    allowExitOnIdle: true,         // ✅ Don't block lambda shutdown
   });
-  
-  // Test connection
+
   globalForPrisma.pool.on('error', (err) => {
     console.error('❌ Unexpected pool error:', err);
-  });
-  
-  globalForPrisma.pool.on('connect', () => {
-    console.log('✅ PostgreSQL pool connected');
   });
 }
 
 const pool = globalForPrisma.pool;
 const adapter = new PrismaPg(pool);
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+// Cache prisma client in globalThis for both dev and prod (warm containers)
+if (!globalForPrisma.prisma) {
+  console.log("🔌 Creating Prisma client...");
+  globalForPrisma.prisma = new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "production" 
-      ? ["error", "warn"] 
+    log: process.env.NODE_ENV === "production"
+      ? ["error", "warn"]
       : ["error", "warn", "query"],
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
 }
+
+export const prisma = globalForPrisma.prisma;
